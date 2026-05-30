@@ -8,3 +8,4 @@ config.json
 .cache/
 models/
 .DS_Store
+.pypi_token.txt
