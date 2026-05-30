@@ -1,0 +1,2 @@
+recursive-include viorra/static *
+include viorra/system_prompt.txt
