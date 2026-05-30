@@ -22,12 +22,13 @@ This version of VIORRA has been completely rewritten from Gradio to a high-perfo
 * **Hardware Acceleration:** Native PyTorch GPU Detection wrapping WebGPU/Direct3D 12 (Windows) or Metal/MPS (macOS).
 
 ## 🚀 Installation & Usage
-You can run VIORRA entirely locally on your own machine.
+You can run VIORRA entirely locally on your own machine. It requires zero configuration.
 
-1. Clone the repository and install requirements.
-2. Build the package: `pip install build` -> `python -m build`
-3. Install the generated `.whl` package via pip.
-4. Type `viorra` in your terminal to boot the local server!
+1. Open your terminal or command prompt.
+2. Run `pip install viorra`
+3. Type `viorra` and press Enter to boot the local server!
+
+*(Note: The first time you launch VIORRA, it will automatically download the required 2.5GB Gemma LLM and ONNX models.)*
 
 ## 🏆 Credits
 
