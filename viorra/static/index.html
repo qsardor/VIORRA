@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VIORRA</title>
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico?v=2">
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Lora:ital@0;1&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="viorraToast" class="toast hidden"></div>
+    <div id="ambientGlow"></div>
+    <div class="app-container">
+        <header>
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <button id="sidebarToggleBtn" class="icon-btn hidden" style="font-size: 1.5rem;" title="View Sessions">&#9776;</button>
+            </div>
+            <div class="header-controls">
+                <div class="status-indicator">
+                    <div class="dot online" id="statusDot"></div>
+                    <span id="statusText"></span>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <section id="bootSection" class="results-section text-center hidden" style="margin-top: 10rem;">
+                <div class="loading-container text-center">
+                    <div class="spinner large"></div>
+                    <h2 id="mainBootText" class="serif-title small loading-title" style="margin-top: 2rem;">Loading VIORRA...</h2>
+                    <p id="bootStatusText" class="mono-label" style="margin-top: 1rem; color: var(--amber); height: 2rem; font-weight: bold; font-size: 0.9rem; letter-spacing: 0.05em;"></p>
+                </div>
+            </section>
+
+            <section class="hero hidden">
+                <h1 class="serif-title">Intelligent coaching. <br>Beautifully delivered.</h1>
+                <p class="subtitle">Paste your essay. Get the truth.</p>
+            </section>
+
+            <section id="offlineScreen" class="results-section hidden text-center" style="margin-top: 10rem;">
+                <h1 class="serif-title" style="color: var(--red); font-size: 3rem;">VIORRA is Offline</h1>
+                <p class="mono-label" style="color: var(--cream-dim);">VIORRA went offline. Please restart the application.</p>
+            </section>
+
+            <section class="editor-section hidden">
+                <div class="editor-section" style="max-width: 800px; margin: 0 auto; width: 100%;">
+                    <div class="chatgpt-input-wrapper">
+                        <input type="file" id="fileUploadInput" accept=".txt,.md,.pdf,.docx" style="display: none;" />
+                        <button id="uploadBtn" class="upload-btn" title="Upload from Computer">&#128206;</button>
+                        
+                        <textarea id="essayInput" class="auto-resize-textarea" placeholder="Paste your US Common App personal statement here, or upload a file..." rows="1"></textarea>
+                        
+                        <button id="analyzeBtn" class="submit-btn" disabled>&#8593;</button>
+                    </div>
+                    <div style="text-align: right; margin-top: 0.5rem; margin-right: 1rem;">
+                        <span class="mono-label right" id="charCount" style="font-size: 0.7rem; color: var(--cream-dim);">0 WORDS</span>
+                    </div>
+                </div>
+            </section>
+
+            <section id="loadingSection" class="results-section hidden text-center">
+                <div class="loading-container text-center">
+                    <div class="spinner large"></div>
+                    <h2 class="serif-title small loading-title" style="margin-top: 2rem;">VIORRA is analyzing your submission...</h2>
+                    <blockquote class="quote" style="max-width: 600px; margin: 2rem auto;">
+                        <span id="quoteText"></span>
+                        <div id="quoteAuthor" class="mono-label" style="margin-top: 1rem; color: var(--amber);"></div>
+                    </blockquote>
+                </div>
+            </section>
+
+            <section id="resultsSection" class="results-section hidden">
+
+                <div class="workspace-section" style="margin-top: 3rem;">
+                    <div class="label-row">
+                        <span class="mono-label">YOUR ESSAY</span>
+                    </div>
+                    <div id="documentWorkspace" class="workspace-container"></div>
+                </div>
+                
+                <div class="diagnostics-section" style="margin-top: 3rem;">
+                    <div class="label-row">
+                        <span class="mono-label">SPECIFIC DIAGNOSTICS</span>
+                        <span id="genTime" class="mono-label right">0.0s</span>
+                    </div>
+                    <div id="diagnosticsList" class="diagnostics-grid">
+                        <!-- Diagnostic cards injected here -->
+                    </div>
+                </div>
+
+                <div class="chat-section" id="chatSection" style="margin-top: 4rem;">
+                    <div class="label-row" style="align-items: center;">
+                        <span class="mono-label">ADMISSIONS MENTOR CHAT</span>
+                    </div>
+                    <div id="chatFeed" class="chat-feed">
+                        <!-- Mentor summary injected here as first message by JS -->
+                    </div>
+                    <div class="chat-input-row">
+                        <input type="text" id="chatInput" placeholder="Ask VIORRA a question, or ask to see the successful examples she used...">
+                        <button id="chatSendBtn" class="icon-btn send-btn">&#8593;</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+
+
+
+
+        <div id="tosModal" class="modal-overlay hidden">
+            <div class="modal-content" style="max-width: 600px; padding: 2.5rem; text-align: left;">
+                <h2 class="serif-title small" style="margin-bottom: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 1rem;">VIORRA Terms of Service</h2>
+                <div style="color: var(--cream); font-size: 0.9rem; line-height: 1.7; max-height: 60vh; overflow-y: auto; padding-right: 1rem;" class="auto-resize-textarea">
+                    <p style="margin-bottom: 1rem;"><strong>1. EXPECT SHARP, HONEST CRITIQUE.</strong><br>VIORRA is designed to provide unvarnished and objective critiques of your personal statements. By using this application, you explicitly agree to receive direct, constructive feedback aimed at pushing your writing to an elite standard.</p>
+                    <p style="margin-bottom: 1rem;"><strong>2. NO ADMISSION GUARANTEES</strong><br>VIORRA analyzes your writing against strict Ivy League standards. However, university admissions are highly subjective. We do not guarantee that using VIORRA will get you accepted into your dream school.</p>
+                    <p style="margin-bottom: 1rem;"><strong>3. USE AT YOUR OWN RISK</strong><br>This application is provided "as is" as an experimental prototype for students. We recommend always keeping a separate backup of your essays on your computer.</p>
+                    <p><strong>4. AN ELITE COACH, NOT A TOY</strong><br>VIORRA is an elite essay coach and teacher. While it acts as a supportive mentor, it does not sugarcoat its feedback or pander to the user. Do not attempt to use the interface for idle conversation or therapy. VIORRA is here to evaluate your writing and force you to improve it.</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="settingsModal" class="modal-overlay hidden">
+            <div class="modal-content" style="max-width: 400px; padding: 2rem;">
+                <div class="modal-header" style="border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 1rem; margin-bottom: 1.5rem;">
+                    <h2 class="serif-title small" style="margin-bottom: 0;">Settings</h2>
+                </div>
+                
+                <div class="setting-group" style="margin-top: 2rem;">
+                    <label class="mono-label">MANAGE HISTORY</label>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem;">
+                        <button id="deleteHistoryBtn" class="primary-btn" style="padding: 0.5rem; font-size: 0.8rem; border-radius: 6px; background-color: transparent; border: 1px solid var(--red); color: var(--red);">&#128465;&#65039; <span>Factory Reset</span></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="deleteConfirmModal" class="modal-overlay hidden">
+        <div class="modal-content" style="text-align: center; width: fit-content; max-width: 400px;">
+            <h2 class="serif-title small" style="color: var(--red); margin-bottom: 1rem;">Factory Reset?</h2>
+            <p style="color: var(--cream-dim); margin-bottom: 2rem; font-size: 0.9rem;">Are you sure you want to permanently delete all your sessions, user data, and downloaded AI models? VIORRA will completely shut down. This action cannot be undone.</p>
+            <div style="display: flex; gap: 1rem; justify-content: center;">
+                <button id="cancelDeleteBtn" class="primary-btn" style="background-color: transparent; border: 1px solid var(--border); color: var(--cream); flex: 1; padding: 0.8rem; border-radius: 8px;">Cancel</button>
+                <button id="confirmDeleteBtn" class="primary-btn" style="background-color: transparent; border: 1px solid var(--red); color: var(--red); flex: 1; padding: 0.8rem; border-radius: 8px;">Yes, Factory Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="noHistoryModal" class="modal-overlay hidden">
+        <div class="modal-content" style="text-align: center; width: fit-content; max-width: 400px; padding: 2.5rem;">
+            <h2 class="serif-title small" style="color: var(--amber); margin-bottom: 1rem;">No History</h2>
+            <p style="color: var(--cream-dim); margin-bottom: 0; font-size: 0.9rem;">There's no history for Export</p>
+        </div>
+    </div>
+    <div id="ragModal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 900px; width: 90vw; padding: 2rem; text-align: left;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 1rem; margin-bottom: 2rem;">
+                <span id="ragModalTitle" class="mono-label" style="font-size: 0.85rem; color: var(--amber); letter-spacing: 0.1em;">SUCCESSFUL ESSAY</span>
+                <button id="closeRagModalBtn" style="background: none; border: 1px solid var(--border); color: var(--cream-dim); width: 32px; height: 32px; border-radius: 6px; cursor: pointer; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease;" onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--cream)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--cream-dim)'">&times;</button>
+            </div>
+            <div style="max-height: 70vh; overflow-y: auto; padding-right: 0.5rem;" class="auto-resize-textarea">
+                <span class="mono-label" style="display: block; margin-bottom: 0.75rem; font-size: 0.7rem; color: var(--cream-dim);">FULL ESSAY</span>
+                <div id="ragModalText" style="color: var(--cream); font-size: 1rem; line-height: 1.8; margin-bottom: 2rem; padding: 1.25rem; background: rgba(0,0,0,0.15); border-radius: 8px; border-left: 2px solid var(--border-highlight); white-space: pre-wrap;"></div>
+
+                <span class="mono-label" style="display: block; margin-bottom: 0.75rem; font-size: 0.7rem; color: var(--cream-dim);">OFFICIAL ADMISSIONS FEEDBACK</span>
+                <div style="background: rgba(232, 165, 94, 0.06); padding: 1.25rem; border-radius: 8px; border-left: 2px solid var(--amber);">
+                    <p id="ragModalFeedback" style="color: var(--cream); font-size: 1rem; margin: 0; line-height: 1.7;"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="errorModal" class="modal-overlay hidden">
+        <div class="modal-content" style="border: 1px solid rgba(255, 255, 255, 0.1); background: var(--surface); max-width: 500px; padding: 2.5rem; text-align: center; border-radius: 8px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);">
+            <div style="font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.8;">&#128161;</div>
+            <h2 class="mono-label" style="color: var(--cream); margin-bottom: 1rem; letter-spacing: 1px; font-size: 0.9rem;">SUBMISSION NOTICE</h2>
+            <div style="width: 40px; height: 1px; background: rgba(255,255,255,0.1); margin: 0 auto 1.5rem auto;"></div>
+            <p id="errorModalText" style="color: var(--cream-dim); font-size: 1rem; line-height: 1.6; margin-bottom: 2rem;"></p>
+            <button id="closeErrorModalBtn" class="primary-btn" style="width: 100%;">Return to Editor</button>
+        </div>
+    </div>
+
+    <div id="infoModal" class="modal-overlay hidden">
+        <div class="modal-content" style="text-align: left; width: fit-content; max-width: 650px; padding: 2.5rem;">
+            <div class="modal-header" style="position: relative; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 1rem; margin-bottom: 1.5rem;">
+                <h2 class="serif-title small" style="margin-bottom: 0;">About VIORRA</h2>
+            </div>
+            
+            <div style="margin-bottom: 2.5rem; color: var(--cream); font-size: 1rem; line-height: 1.7;">
+                <p style="margin-bottom: 1rem;"><strong>Why VIORRA exists:</strong></p>
+                <p style="color: var(--cream-dim); margin-bottom: 1rem;">Students use generic chatbots like ChatGPT, Gemini, or Claude to review their admissions essays. <strong>This is a massive mistake.</strong> Even if you force them to search the web, chatbots just scrape SEO-optimized test-prep blogs to build generic rubrics ("Show, don't tell"). They evaluate you based on internet marketing sludge, not reality. Furthermore, free users are often forced onto basic "flash" models that provide shallow, instant answers instead of deep reasoning.</p>
+                <p style="color: var(--cream-dim);"><strong>VIORRA doesn't guess.</strong> If generic chatbots were actually good at this, we wouldn't have spent months building this software. Instead of generating arbitrary advice from thin air, VIORRA's engine forces deep Chain-of-Thought reasoning against a proprietary RAG database of hundreds of real, verified Ivy League essays to deliver the brutal truth.</p>
+            </div>
+
+            <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 2rem;">
+                <p class="mono-label" style="color: var(--cream-dim); margin-bottom: 1.5rem;">BUILT BY TEAM VIOLETS</p>
+                
+                <div class="credits-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                    <div class="credit-item">
+                        <span class="mono-label credit-role" style="font-size: 0.75rem; color: var(--cream-dim); display: block; margin-bottom: 0.3rem;">FOUNDER & MARKETING</span>
+                        <span class="credit-name" style="font-weight: 500; font-size: 1.05rem; color: var(--cream);">Azizakhan Rustamova</span>
+                    </div>
+                    <div class="credit-item">
+                        <span class="mono-label credit-role" style="font-size: 0.75rem; color: var(--cream-dim); display: block; margin-bottom: 0.3rem;">MAIN DEVELOPER OF SOFTWARE</span>
+                        <span class="credit-name" style="font-weight: 500; font-size: 1.05rem; color: var(--cream);">Sardor Qurbonov</span>
+                    </div>
+                    <div class="credit-item">
+                        <span class="mono-label credit-role" style="font-size: 0.75rem; color: var(--cream-dim); display: block; margin-bottom: 0.3rem;">BUSINESS DEVELOPER</span>
+                        <span class="credit-name" style="font-weight: 500; font-size: 1.05rem; color: var(--cream);">Ruhshona Farhodova</span>
+                    </div>
+                    <div class="credit-item">
+                        <span class="mono-label credit-role" style="font-size: 0.75rem; color: var(--cream-dim); display: block; margin-bottom: 0.3rem;">FULL STACK DEVELOPER</span>
+                        <span class="credit-name" style="font-weight: 500; font-size: 1.05rem; color: var(--cream);">Damirbek Xolnazarov</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="margin-top: 2.5rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; gap: 2rem;">
+                    <button id="tosLink" class="mono-label" style="background: none; border: none; padding: 0; color: var(--cream-dim); text-decoration: none; font-size: 0.75rem; transition: color 0.2s ease; cursor: pointer;" onmouseover="this.style.color='var(--cream)'" onmouseout="this.style.color='var(--cream-dim)'">TERMS OF SERVICE</button>
+                </div>
+                <a href="https://github.com/qsardor/VIORRA" target="_blank" style="color: var(--cream-dim); text-decoration: none; font-size: 0.9rem; display: inline-flex; align-items: center; gap: 0.5rem; transition: color 0.2s;" onmouseover="this.style.color='var(--cream)'" onmouseout="this.style.color='var(--cream-dim)'">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+                    View Source Code on GitHub
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div id="sidebarOverlay" class="sidebar-overlay"></div>
+    <aside id="sidebar" class="sidebar">
+        <div class="sidebar-header">
+            <h2 class="serif-title small" style="margin-bottom: 0;">Sessions</h2>
+        </div>
+        <div class="sidebar-content">
+            <button id="newSessionBtn" class="primary-btn" style="width: 100%; padding: 0.8rem; margin-top: 0; margin-bottom: 1rem; font-size: 0.85rem; border: 1px solid var(--border-highlight); background: transparent; color: var(--cream);" onmouseover="this.style.background='white'; this.style.color='black';" onmouseout="this.style.background='transparent'; this.style.color='var(--cream)';">+ NEW SESSION</button>
+            <div id="sessionsList" style="display: flex; flex-direction: column;">
+                <!-- Session items injected here -->
+            </div>
+        </div>
+        <div class="sidebar-footer" style="padding: 1rem; border-top: 1px solid rgba(255,255,255,0.05); margin-top: auto;">
+            <button id="settingsBtn" class="icon-btn" style="width: 100%; text-align: left; padding: 0.75rem; display: flex; align-items: center; gap: 0.75rem; border-radius: 8px; font-size: 0.9rem;">&#9881;&#65039; <span>Settings</span></button>
+            <button id="infoBtn" class="icon-btn" style="width: 100%; text-align: left; padding: 0.75rem; display: flex; align-items: center; gap: 0.75rem; border-radius: 8px; font-size: 0.9rem; margin-top: 0.5rem;">&#8505;&#65039; <span>About VIORRA</span></button>
+        </div>
+    </aside>
+
+    <script>
+        const results = document.getElementById('resultsSection');
+        const loading = document.getElementById('loadingSection');
+        const diagList = document.getElementById('diagnosticsList');
+        const quoteText = document.getElementById('quoteText');
+        const quoteAuthor = document.getElementById('quoteAuthor');
+        const btn = document.getElementById('analyzeBtn');
+        const input = document.getElementById('essayInput');
+        const charCount = document.getElementById('charCount');
+        
+        input.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+            btn.disabled = this.value.trim().length === 0;
+            const text = this.value.trim();
+            const words = text ? text.split(/\s+/).length : 0;
+            charCount.innerText = `${words} WORDS`;
+            charCount.style.color = '';
+        });
+
+        // Ctrl+Enter to submit essay
+        input.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                if (!btn.disabled) btn.click();
+            }
+        });
+        
+        const fileUploadInput = document.getElementById('fileUploadInput');
+        const uploadBtn = document.getElementById('uploadBtn');
+        
+        uploadBtn.addEventListener('click', () => fileUploadInput.click());
+        
+        fileUploadInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const originalIcon = uploadBtn.innerHTML;
+            uploadBtn.innerHTML = '<span class="spinner" style="width: 12px; height: 12px; border-width: 2px;"></span>';
+            uploadBtn.disabled = true;
+            input.placeholder = `Extracting text from ${file.name}...`;
+            input.disabled = true;
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            try {
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                if (data.error) throw new Error(data.error);
+                
+                input.value = data.text;
+                input.dispatchEvent(new Event('input'));
+            } catch (err) {
+                showToast("Upload failed: " + err.message, true);
+            } finally {
+                uploadBtn.innerHTML = originalIcon;
+                uploadBtn.disabled = false;
+                input.placeholder = "Paste your US Common App personal statement here, or upload a file...";
+                input.disabled = false;
+            }
+            fileUploadInput.value = '';
+        });
+
+        const QUOTES = [
+            { text: "Tell me and I forget, teach me and I remember, involve me and I learn.", author: "Benjamin Franklin" },
+            { text: "I write to discover what I know.", author: "Flannery O'Connor" },
+            { text: "The mediocre teacher tells. The good teacher explains. The superior teacher demonstrates. The great teacher inspires.", author: "William Arthur Ward" },
+            { text: "Easy reading is damn hard writing.", author: "Nathaniel Hawthorne" }
+        ];
+
+        function setPersonalizedPlaceholder() {
+            const advices = [
+                `Don't forget to drink water.`,
+                `Take a deep breath before typing.`,
+                `What's on your mind?`,
+                `Ask VIORRA a question...`
+            ];
+            chatInput.placeholder = advices[Math.floor(Math.random() * advices.length)];
+        }
+        setPersonalizedPlaceholder();
+
+        let hasReadTos = false;
+
+        // Settings Modal Logic
+        const settingsBtn = document.getElementById('settingsBtn');
+        const settingsModal = document.getElementById('settingsModal');
+        settingsBtn.addEventListener('click', () => settingsModal.classList.remove('hidden'));
+        
+        settingsModal.addEventListener('click', (e) => {
+            if (e.target === settingsModal) {
+                settingsModal.classList.add('hidden');
+            }
+        });
+
+        const infoBtn = document.getElementById('infoBtn');
+        const infoModal = document.getElementById('infoModal');
+
+        infoBtn.addEventListener('click', () => {
+            infoModal.classList.remove('hidden');
+            toggleSidebar();
+        });
+        
+        infoModal.addEventListener('click', (e) => {
+            if (e.target === infoModal) {
+                infoModal.classList.add('hidden');
+            }
+        });
+
+        const ragModal = document.getElementById('ragModal');
+        const closeRagModalBtn = document.getElementById('closeRagModalBtn');
+        closeRagModalBtn.addEventListener('click', () => ragModal.classList.add('hidden'));
+        ragModal.addEventListener('click', (e) => {
+            if (e.target === ragModal) {
+                ragModal.classList.add('hidden');
+            }
+        });
+
+        const errorModal = document.getElementById('errorModal');
+        const closeErrorModalBtn = document.getElementById('closeErrorModalBtn');
+        closeErrorModalBtn.addEventListener('click', () => errorModal.classList.add('hidden'));
+        errorModal.addEventListener('click', (e) => {
+            if (e.target === errorModal) {
+                errorModal.classList.add('hidden');
+            }
+        });
+
+
+
+        
+        
+                let isAnalyzing = false;
+        let isCoreReady = false;
+
+        // Show boot section after a tiny delay if core isn't ready
+        setTimeout(() => {
+            if (!isCoreReady) {
+                const bootSec = document.getElementById('bootSection');
+                if (bootSec) bootSec.classList.remove('hidden');
+            }
+        }, 250);
+
+        async function pollCoreStatus() {
+            const statusDot = document.querySelector('.status-indicator .dot');
+            const statusText = document.querySelector('.status-indicator span');
+
+            try {
+                const res = await fetch('/api/status');
+                const data = await res.json();
+                
+                const bootStatusEl = document.getElementById('bootStatusText');
+                if (bootStatusEl && data.status) {
+                    bootStatusEl.innerText = data.status;
+                }
+                
+                // Ensure indicator is online if fetch succeeds
+                if (statusDot.classList.contains('offline')) {
+                    const resultsSec = document.getElementById('resultsSection');
+                    const wasResVisible = resultsSec && !resultsSec.classList.contains('hidden');
+                    if (wasResVisible && typeof currentSessionId !== 'undefined' && currentSessionId) {
+                        sessionStorage.setItem('viorra_restore_session', currentSessionId);
+                    } else if (!wasResVisible) {
+                        sessionStorage.setItem('viorra_restore_session', 'NONE');
+                    }
+                    window.location.reload();
+                    return;
+                }
+
+                if (data.ready) {
+                    if (!isCoreReady) {
+                        isCoreReady = true;
+                        const ambientGlow = document.getElementById('ambientGlow');
+                        if (ambientGlow) {
+                            ambientGlow.classList.add('glow-active', 'glow-breathing');
+                        }
+                        const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
+                        if (sidebarToggleBtn) sidebarToggleBtn.classList.remove('hidden');
+                        const bootSec = document.getElementById('bootSection');
+                        const heroSec = document.querySelector('.hero');
+                        const editorSec = document.querySelector('.editor-section');
+                        
+                        if (bootSec) bootSec.classList.add('hidden');
+                        
+                        const restoreSessionId = sessionStorage.getItem('viorra_restore_session');
+                        sessionStorage.removeItem('viorra_restore_session');
+                        
+                        if (restoreSessionId && restoreSessionId !== 'NONE' && typeof loadSession === 'function') {
+                            loadSession(restoreSessionId);
+                        } else {
+                            const resultsSec = document.getElementById('resultsSection');
+                            if (window.wasResultsVisible) {
+                                if (resultsSec) resultsSec.classList.remove('hidden');
+                            } else {
+                                if (heroSec) heroSec.classList.remove('hidden');
+                                if (editorSec) editorSec.classList.remove('hidden');
+                                if (heroSec) heroSec.classList.add('animate-fade-in');
+                                if (editorSec) editorSec.classList.add('animate-fade-in');
+                            }
+                            window.wasResultsVisible = false;
+                        }
+                        
+                        btn.disabled = input.value.trim().length === 0;
+                        btn.style.opacity = '1';
+                        btn.style.cursor = 'pointer';
+                        btn.innerHTML = '&#8593;';
+                    }
+                    setTimeout(pollCoreStatus, 2000);
+                } else {
+                    btn.disabled = true;
+                    btn.style.opacity = '0.5';
+                    btn.style.cursor = 'not-allowed';
+                    btn.innerHTML = '...';
+                    setTimeout(pollCoreStatus, 1000);
+                }
+            } catch (e) {
+                const bootSec = document.getElementById('bootSection');
+                const heroSec = document.querySelector('.hero');
+                const editorSec = document.querySelector('.editor-section');
+                const resultsSec = document.getElementById('resultsSection');
+                const offlineSec = document.getElementById('offlineScreen');
+                
+                if (!statusDot.classList.contains('offline')) {
+                    window.wasResultsVisible = resultsSec && !resultsSec.classList.contains('hidden');
+                }
+                
+                if (bootSec && !bootSec.classList.contains('hidden')) bootSec.classList.add('hidden');
+                if (heroSec && !heroSec.classList.contains('hidden')) heroSec.classList.add('hidden');
+                if (editorSec && !editorSec.classList.contains('hidden')) editorSec.classList.add('hidden');
+                if (resultsSec && !resultsSec.classList.contains('hidden')) resultsSec.classList.add('hidden');
+                
+                // Forcefully close any open modals when the engine shuts down
+                document.querySelectorAll('.modal-overlay:not(.hidden)').forEach(modal => {
+                    modal.classList.add('hidden');
+                });
+                
+                // Forcefully close the sidebar
+                const sidebar = document.getElementById('sidebar');
+                if (sidebar) sidebar.classList.remove('open');
+                const sidebarOverlay = document.getElementById('sidebarOverlay');
+                if (sidebarOverlay) sidebarOverlay.classList.remove('active');
+                
+                if (offlineSec) offlineSec.classList.remove('hidden');
+
+                btn.disabled = true;
+                btn.style.opacity = '0.5';
+                btn.style.cursor = 'not-allowed';
+                statusDot.className = 'dot offline';
+                statusText.innerText = '';
+                const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
+                if (sidebarToggleBtn) sidebarToggleBtn.classList.add('hidden');
+                isCoreReady = false;
+                const ambientGlow = document.getElementById('ambientGlow');
+                if (ambientGlow) {
+                    ambientGlow.classList.remove('glow-active', 'glow-breathing');
+                }
+                
+                setTimeout(pollCoreStatus, 3000);
+            }
+        }
+        
+        pollCoreStatus();
+        
+        window.addEventListener('beforeunload', (e) => {
+            if (isAnalyzing) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+
+        // Animation Utilities
+        function animateValue(obj, start, end, duration, suffix = '') {
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                const easeProgress = 1 - Math.pow(1 - progress, 4); // easeOutQuart
+                obj.innerHTML = Math.round(easeProgress * (end - start) + start) + suffix;
+                if (progress < 1) window.requestAnimationFrame(step);
+            };
+            window.requestAnimationFrame(step);
+        }
+
+        async function typeFeedback(element, text) {
+            element.innerHTML = '';
+            const speed = 15; // ms per char
+            for (let i = 0; i < text.length; i++) {
+                element.innerHTML += text.charAt(i);
+                await new Promise(r => setTimeout(r, speed));
+            }
+        }
+
+        function highlightQuotes(text, diagnostics) {
+            let html = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            diagnostics.forEach((d, idx) => {
+                if (d.quote && d.quote.length > 5) {
+                    const safeQuote = d.quote.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const regex = new RegExp(`(${safeQuote})`, 'gi');
+                    
+                    if (html.match(regex)) {
+                        html = html.replace(regex, `<span class="highlight-span" data-diag-id="${idx}">$1</span>`);
+                    } else if (d.quote.length > 30) {
+                        // Fallback: If AI fixed a typo in a long quote, match by start and end
+                        const start = d.quote.substring(0, 15).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        const end = d.quote.substring(d.quote.length - 15).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        const fuzzyRegex = new RegExp(`(${start}[\\s\\S]*?${end})`, 'gi');
+                        html = html.replace(fuzzyRegex, `<span class="highlight-span" data-diag-id="${idx}">$1</span>`);
+                    }
+                }
+            });
+            return html;
+        }
+
+        function setupInteractions() {
+            const toggleActive = (id, force) => {
+                document.querySelectorAll(`[data-diag-id="${id}"]`).forEach(el => {
+                    el.classList.toggle('active', force);
+                });
+            };
+            document.querySelectorAll('.diagnostic-card, .highlight-span').forEach(el => {
+                el.addEventListener('mouseenter', () => toggleActive(el.dataset.diagId, true));
+                el.addEventListener('mouseleave', () => toggleActive(el.dataset.diagId, false));
+                
+                if (el.classList.contains('diagnostic-card')) {
+                    el.addEventListener('click', () => {
+                        const targetSpan = document.querySelector(`.highlight-span[data-diag-id="${el.dataset.diagId}"]`);
+                        if (targetSpan) {
+                            targetSpan.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            targetSpan.classList.add('pulse-highlight');
+                            setTimeout(() => {
+                                targetSpan.classList.remove('pulse-highlight');
+                            }, 2000);
+                        }
+                    });
+                }
+            });
+        }
+
+        btn.addEventListener('click', async () => {
+            const text = input.value.trim();
+            if(!text) return;
+
+            isAnalyzing = true;
+            btn.disabled = true;
+            document.getElementById('sidebarToggleBtn').classList.add('hidden');
+            btn.innerHTML = '<span class="spinner" style="width: 14px; height: 14px; border-width: 2px;"></span>';
+            
+            // Fade out editor and hero, fade in loader
+            const editorSection = document.querySelector('.editor-section');
+            const heroSection = document.querySelector('.hero');
+            editorSection.classList.add('animate-fade-out');
+            heroSection.classList.add('animate-fade-out');
+            
+            let quoteInterval;
+            setTimeout(() => {
+                editorSection.classList.add('hidden');
+                heroSection.classList.add('hidden');
+                editorSection.classList.remove('animate-fade-out');
+                heroSection.classList.remove('animate-fade-out');
+                
+                const updateQuote = () => {
+                    const randomQuote = QUOTES[Math.floor(Math.random() * QUOTES.length)];
+                    quoteText.style.opacity = 0;
+                    quoteAuthor.style.opacity = 0;
+                    setTimeout(() => {
+                        quoteText.innerText = `"${randomQuote.text}"`;
+                        quoteAuthor.innerText = `- ${randomQuote.author}`;
+                        quoteText.style.opacity = 1;
+                        quoteAuthor.style.opacity = 1;
+                    }, 400); // fade out duration
+                };
+                
+                updateQuote(); // Initial quote
+                quoteInterval = setInterval(updateQuote, 10000); // Rotate every 10 seconds
+                
+                loading.classList.remove('hidden');
+                loading.classList.add('animate-fade-in');
+                loading.scrollIntoView({behavior: 'smooth'});
+            }, 300);
+
+            try {
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({text: text})
+                });
+                
+                const data = await response.json();
+                
+                if (data.session_id && response.ok && !data.error && !data.detail) {
+                    currentSessionId = data.session_id;
+                }
+                
+                clearInterval(quoteInterval); // Stop rotating when loaded
+                
+                // Fade out loader, slide up results
+                loading.classList.remove('animate-fade-in');
+                loading.classList.add('animate-fade-out');
+                
+                setTimeout(async () => {
+                    loading.classList.add('hidden');
+                    loading.classList.remove('animate-fade-out');
+                    
+                    if(!response.ok || data.error || data.detail) {
+                        const errMsg = data.error || data.detail || "Analysis failed.";
+                        document.getElementById('errorModalText').innerText = errMsg;
+                        document.getElementById('errorModal').classList.remove('hidden');
+                        isAnalyzing = false;
+                        document.getElementById('sidebarToggleBtn').classList.remove('hidden');
+                        editorSection.classList.remove('hidden');
+                        heroSection.classList.remove('hidden');
+                        editorSection.classList.add('animate-fade-in');
+                        heroSection.classList.add('animate-fade-in');
+                    } else {
+                        results.classList.remove('hidden');
+                        results.classList.add('animate-slide-up');
+                        results.scrollIntoView({behavior: 'smooth'});
+                        
+                        document.getElementById('genTime').innerText = data.generation_time + 's';
+                        
+                        // Store retrieved docs for backend context, but do NOT render them in the UI
+                        if (data.retrieved_docs && data.retrieved_docs.length > 0) {
+                            window.currentRetrievedDocs = data.retrieved_docs;
+                        }
+                        
+                        // Populate Document Workspace with Highlights
+                        document.getElementById('documentWorkspace').innerHTML = highlightQuotes(text, data.diagnostics || []);
+                        
+                        // Inject Mentor Summary as the FIRST chat message
+                        const chatFeed = document.getElementById('chatFeed');
+                        const summaryText = data.mentor_summary || "I have analyzed your essay. What specific feedback would you like to discuss?";
+                        chatFeed.innerHTML = `
+                            <div class="chat-message viorra">
+                                <div class="message-bubble">${summaryText}</div>
+                            </div>
+                        `;
+                        
+                        // Populate Diagnostic Cards
+                        if (data.diagnostics) {
+                            diagList.innerHTML = data.diagnostics.map((d, i) => `
+                                <div class="diagnostic-card" data-diag-id="${i}">
+                                    <h3 class="serif-title small">${d.title}</h3>
+                                    <blockquote class="quote">"${d.quote}"</blockquote>
+                                    <p class="feedback" id="feedback-${i}">${d.feedback}</p>
+                                </div>
+                            `).join('');
+                        } else {
+                            diagList.innerHTML = '';
+                        }
+                        
+                        setupInteractions();
+                        
+                        window.lastAnalysisData = data;
+                        saveStateToServer(text, data, chatHistory);
+                        document.getElementById('chatSection').classList.remove('hidden');
+                    }
+                    
+                    btn.disabled = false;
+                    btn.innerHTML = '&#8593;';
+                    isAnalyzing = false;
+                    document.getElementById('sidebarToggleBtn').classList.remove('hidden');
+                }, 300);
+
+            } catch (err) {
+                showToast("Error connecting to local VIORRA core.", true);
+                loading.classList.add('hidden');
+                editorSection.classList.remove('hidden');
+                heroSection.classList.remove('hidden');
+                btn.disabled = false;
+                btn.innerHTML = '&#8593;';
+                isAnalyzing = false;
+                document.getElementById('sidebarToggleBtn').classList.remove('hidden');
+            }
+        });
+
+        // Tactical Nuke Logic (Global)
+        async function triggerNuke(sessionFile) {
+            // Hide the sidebar immediately so the animation takes over smoothly
+            document.getElementById('sidebar').classList.remove('open');
+            document.getElementById('sidebarOverlay').classList.remove('active');
+
+            if (sessionFile) {
+                try {
+                    await fetch(`/api/sessions/${encodeURIComponent(sessionFile)}`, { method: 'DELETE' });
+                } catch (e) {
+                    console.error("Failed to nuke session file", e);
+                }
+            }
+
+            // 1. Create Overlay
+            const overlay = document.createElement('div');
+            overlay.className = 'nuke-overlay';
+            
+            // 2. Create Video
+            const video = document.createElement('video');
+            video.src = '/static/nuke.mp4';
+            video.autoplay = true;
+            video.muted = true; // Auto-play policies
+            video.playsInline = true;
+            
+            // 3. Create Flash (Triggers instantly, fades out over 5s to reveal video)
+            const flash = document.createElement('div');
+            flash.className = 'nuke-flash';
+            
+            overlay.appendChild(video);
+            overlay.appendChild(flash);
+            document.body.appendChild(overlay);
+
+            // 4. Reload completely after 11s
+            setTimeout(() => {
+                isAnalyzing = false; // Bypass the beforeunload warning
+                window.location.reload();
+            }, 11000);
+        }
+
+        // Chatbot
+        const toastEl = document.getElementById('viorraToast');
+        let toastTimeout;
+        function showToast(message, isError = false) {
+            if (toastTimeout) clearTimeout(toastTimeout);
+            toastEl.innerText = message;
+            if (isError) toastEl.classList.add('error');
+            else toastEl.classList.remove('error');
+            toastEl.classList.remove('hidden');
+            toastTimeout = setTimeout(() => {
+                toastEl.classList.add('hidden');
+            }, 3000);
+        }
+
+        let chatHistory = [];
+        let currentFeedbackContext = "";
+        let currentSessionId = "";
+        let sixtySevenCount = 0;
+        
+        const chatSendBtn = document.getElementById('chatSendBtn');
+        const chatFeed = document.getElementById('chatFeed');
+        const chatSec = document.getElementById('chatSection');
+
+        function parseMarkdown(text) {
+            if (!text) return "";
+            // Escape HTML
+            let html = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            // Bold
+            html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            // Italic
+            html = html.replace(/\*([^\*]+)\*/g, '<em>$1</em>').replace(/_([^_]+)_/g, '<em>$1</em>');
+            // Inline Code
+            html = html.replace(/`([^`]+)`/g, '<code style="background:rgba(255,255,255,0.1);padding:2px 4px;border-radius:3px;font-family:monospace;">$1</code>');
+            // Newlines
+            html = html.replace(/\n/g, '<br>');
+            return html;
+        }
+
+        function appendMessage(role, content) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `chat-message ${role}`;
+            
+            const bubbleDiv = document.createElement('div');
+            bubbleDiv.className = 'message-bubble';
+            bubbleDiv.innerHTML = parseMarkdown(content);
+            
+            msgDiv.appendChild(bubbleDiv);
+            chatFeed.appendChild(msgDiv);
+            chatFeed.scrollTop = chatFeed.scrollHeight;
+        }
+
+        async function sendChatMessage() {
+            const text = chatInput.value.trim();
+            if (!text) return;
+            
+            // 67 Meme Easter Egg
+            if (text === "67") {
+                sixtySevenCount++;
+                appendMessage('user', text);
+                chatInput.value = '';
+                
+                if (sixtySevenCount === 1) {
+                    appendMessage('viorra', "Bro... No... Not here.");
+                    chatHistory.push({role: "user", content: text}, {role: "assistant", content: "Bro... No... Not here."});
+                    return;
+                } else if (sixtySevenCount === 2) {
+                    appendMessage('viorra', "BRO STOP!!! Or I gonna nuke this place");
+                    chatHistory.push({role: "user", content: text}, {role: "assistant", content: "BRO STOP!!! Or I gonna nuke this place"});
+                    return;
+                } else if (sixtySevenCount >= 3) {
+                    // Trigger the Nuke
+                    triggerNuke(currentSessionId);
+                    return;
+                }
+            }
+
+            // Gather context
+            if (!currentFeedbackContext) {
+                const diagCards = document.querySelectorAll('.diagnostic-card');
+                let context = "";
+                diagCards.forEach(card => {
+                    const title = card.querySelector('h3').innerText;
+                    const fb = card.querySelector('.feedback').innerText;
+                    context += `[${title}]\n${fb}\n\n`;
+                });
+                currentFeedbackContext = context;
+            }
+
+            // Proactive 32K Context Check (Approx 100,000 chars)
+            let totalChars = currentFeedbackContext.length + text.length;
+            chatHistory.forEach(msg => totalChars += msg.content.length);
+            if (totalChars > 100000) {
+                appendMessage('viorra', "&#9888;&#65039; **SYSTEM WARNING**: Approaching 32K Context Limit. My memory of our earlier conversation has been cleared to make room.");
+                chatHistory = [];
+            }
+
+            appendMessage('user', text);
+            chatInput.value = '';
+            chatInput.disabled = true;
+            chatSendBtn.disabled = true;
+            
+            // Add typing indicator
+            const typingDiv = document.createElement('div');
+            typingDiv.className = `chat-message viorra typing-indicator`;
+            typingDiv.innerHTML = `<div class="message-bubble"><span class="spinner"></span></div>`;
+            chatFeed.appendChild(typingDiv);
+            chatFeed.scrollTop = chatFeed.scrollHeight;
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        session_id: currentSessionId,
+                        essay_text: input.value,
+                        previous_feedback: currentFeedbackContext,
+                        chat_history: chatHistory,
+                        new_message: text,
+                        retrieved_docs: window.currentRetrievedDocs || []
+                    })
+                });
+                
+                const data = await response.json();
+                
+                // Remove typing indicator
+                chatFeed.removeChild(typingDiv);
+                
+                if (data.error === "CONTEXT_LIMIT_REACHED") {
+                    appendMessage('viorra', "&#9888;&#65039; **SYSTEM ERROR**: 32K Context Limit Reached. I have erased my memory of our earlier conversation. Please repeat your question.");
+                    chatHistory = []; // Wipe memory
+                } else if(data.error) {
+                    appendMessage('viorra', "SYSTEM ERROR: " + (data.details || data.error));
+                } else {
+                    appendMessage('viorra', data.response);
+                    chatHistory.push({role: "user", content: text});
+                    chatHistory.push({role: "assistant", content: data.response});
+                    
+                    saveStateToServer(input.value, window.lastAnalysisData, chatHistory);
+                }
+            } catch (err) {
+                chatFeed.removeChild(typingDiv);
+                appendMessage('viorra', "NETWORK ERROR: Could not reach VIORRA.");
+            }
+
+            chatInput.disabled = false;
+            chatSendBtn.disabled = false;
+            chatInput.focus();
+        }
+
+        chatSendBtn.addEventListener('click', sendChatMessage);
+        chatInput.addEventListener('keydown', (e) => {
+            if(e.key === 'Enter') sendChatMessage();
+        });
+
+        // Backend Sync & Session Sidebar Logic
+        async function saveStateToServer(text, data, chatHist) {
+            if (!currentSessionId) return;
+            try {
+                await fetch('/api/sessions/save', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        session_id: currentSessionId,
+                        essay_text: text,
+                        data: data || {},
+                        chat_history: chatHist || []
+                    })
+                });
+            } catch(e) { console.error("Failed to save session", e); }
+        }
+
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+        const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
+
+        function toggleSidebar() {
+            sidebar.classList.toggle('open');
+            sidebarOverlay.classList.toggle('active');
+            if (sidebar.classList.contains('open')) {
+                loadSessionsList();
+            }
+        }
+
+        sidebarToggleBtn.addEventListener('click', toggleSidebar);
+        sidebarOverlay.addEventListener('click', toggleSidebar);
+
+        document.getElementById('newSessionBtn').addEventListener('click', async () => {
+            const resultsSec = document.getElementById('resultsSection');
+            const wasVisible = !resultsSec.classList.contains('hidden');
+            
+            if (wasVisible) {
+                resultsSec.classList.remove('animate-fade-in');
+                resultsSec.classList.add('animate-fade-out');
+                await new Promise(r => setTimeout(r, 150));
+            }
+            
+            currentSessionId = "";
+            chatHistory = [];
+            
+            resultsSec.classList.add('hidden');
+            resultsSec.classList.remove('animate-fade-out');
+            document.getElementById('chatSection').classList.add('hidden');
+            
+            const hero = document.querySelector('.hero');
+            const editor = document.querySelector('.editor-section');
+            hero.classList.remove('hidden');
+            editor.classList.remove('hidden');
+            hero.classList.add('animate-fade-in');
+            editor.classList.add('animate-fade-in');
+
+            document.getElementById('essayInput').value = "";
+            document.getElementById('essayInput').style.height = 'auto'; // Reset explicitly just in case
+            document.getElementById('essayInput').dispatchEvent(new Event('input'));
+            
+            toggleSidebar();
+        });
+
+        // Global click listener to close open session confirm overlays
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.session-confirm') && !e.target.closest('.delete-session-icon')) {
+                document.querySelectorAll('.cancel-del-btn').forEach(btn => {
+                    if (!btn.closest('.session-confirm').classList.contains('hidden')) {
+                        btn.click();
+                    }
+                });
+            }
+        });
+
+        async function loadSessionsList() {
+            try {
+                const res = await fetch('/api/sessions');
+                const files = await res.json();
+                const list = document.getElementById('sessionsList');
+                list.innerHTML = '';
+                
+                if (files.length === 0) {
+                    list.innerHTML = `<p class="mono-label" style="text-align: center; margin-top: 2rem;">${window.t ? window.t.no_sessions : "NO SESSIONS FOUND"}</p>`;
+                    return;
+                }
+                
+                files.forEach(file => {
+                    const nameParts = file.replace('.json', '').split('.');
+                    let dateStr = file;
+                    if (nameParts.length >= 6) {
+                        dateStr = `${nameParts[0]}/${nameParts[1]}/${nameParts[2]} ${nameParts[3]}:${nameParts[4]}:${nameParts[5]}`;
+                    }
+                    
+                    const div = document.createElement('div');
+                    div.className = 'session-item';
+                    div.style.position = 'relative';
+                    if (currentSessionId && file.includes(currentSessionId)) {
+                        div.classList.add('active');
+                    }
+                    
+                    const confirmBtnHtml = `<button class="confirm-del-btn" style="background: transparent; border: none; cursor: pointer; padding: 0.3rem 0.6rem; display: flex; align-items: center; color: var(--red); font-size: 1.2rem;" title="Confirm Delete">&#10003;</button>`;
+
+                    div.innerHTML = `
+                        <div style="flex: 1; cursor: pointer;" class="session-content-area">
+                            <div class="session-date">${dateStr}</div>
+                            <div class="session-preview">${window.t ? window.t.view_session_analysis : "View Session Analysis"}</div>
+                        </div>
+                        <div class="session-actions" style="display: flex; align-items: center;">
+                            <button class="delete-session-icon" style="background: none; border: none; color: var(--cream-dim); cursor: pointer; font-size: 1.1rem; padding: 0.2rem;" title="Delete Session">&#128465;&#65039;</button>
+                        </div>
+                        <div class="session-confirm hidden" style="display: flex; align-items: center; gap: 0.5rem; padding-left: 0.5rem;">
+                            ${confirmBtnHtml}
+                            <button class="cancel-del-btn" style="background: transparent; color: var(--cream-dim); border: none; padding: 0.3rem; font-size: 1.1rem; cursor: pointer; margin-top: 1px;" title="Cancel">&#x2715;</button>
+                        </div>
+                    `;
+                    
+                    const contentArea = div.querySelector('.session-content-area');
+                    contentArea.addEventListener('click', async () => {
+                        await loadSession(file);
+                        toggleSidebar();
+                    });
+
+                    const actionsDiv = div.querySelector('.session-actions');
+                    const trashIcon = div.querySelector('.delete-session-icon');
+                    const confirmOverlay = div.querySelector('.session-confirm');
+                    const confirmBtn = div.querySelector('.confirm-del-btn');
+                    const cancelBtn = div.querySelector('.cancel-del-btn');
+
+                    trashIcon.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        // Close any other open confirm overlays
+                        document.querySelectorAll('.cancel-del-btn').forEach(btn => {
+                            if (btn !== cancelBtn && !btn.closest('.session-confirm').classList.contains('hidden')) {
+                                btn.click();
+                            }
+                        });
+                        
+                        actionsDiv.classList.add('hidden');
+                        actionsDiv.classList.remove('animate-fade-in');
+                        confirmOverlay.classList.remove('hidden');
+                        void confirmOverlay.offsetWidth;
+                        confirmOverlay.classList.add('animate-fade-in');
+                    });
+
+                    cancelBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        confirmOverlay.classList.add('hidden');
+                        confirmOverlay.classList.remove('animate-fade-in');
+                        actionsDiv.classList.remove('hidden');
+                        void actionsDiv.offsetWidth;
+                        actionsDiv.classList.add('animate-fade-in');
+                    });
+
+                    confirmBtn.addEventListener('click', async (e) => {
+                        e.stopPropagation();
+                        try {
+                            confirmBtn.innerHTML = '<span class="spinner" style="width: 12px; height: 12px; border-width: 2px;"></span>';
+                            const res = await fetch('/api/sessions/' + encodeURIComponent(file), { method: 'DELETE' });
+                            if (res.ok) {
+                                div.remove();
+                                if (currentSessionId && file.includes(currentSessionId)) {
+                                    document.getElementById('newSessionBtn').click();
+                                }
+                                if (list.children.length === 0) {
+                                    list.innerHTML = `<p class="mono-label" style="text-align: center; margin-top: 2rem;">${window.t ? window.t.no_sessions : "NO SESSIONS FOUND"}</p>`;
+                                }
+                            }
+                        } catch (err) {
+                            console.error("Failed to delete", err);
+                        }
+                    });
+                    
+                    list.appendChild(div);
+                });
+            } catch(e) {
+                console.error("Failed to load sessions", e);
+            }
+        }
+
+        async function loadSession(filename) {
+            try {
+                const resultsSec = document.getElementById('resultsSection');
+                const heroSec = document.querySelector('.hero');
+                const editorSec = document.querySelector('.editor-section');
+                
+                const resultsVisible = !resultsSec.classList.contains('hidden');
+                const mainVisible = !heroSec.classList.contains('hidden');
+                
+                if (resultsVisible) {
+                    resultsSec.classList.remove('animate-fade-in');
+                    resultsSec.classList.add('animate-fade-out');
+                } else if (mainVisible) {
+                    heroSec.classList.remove('animate-fade-in');
+                    editorSec.classList.remove('animate-fade-in');
+                    heroSec.classList.add('animate-fade-out');
+                    editorSec.classList.add('animate-fade-out');
+                }
+                
+                if (resultsVisible || mainVisible) {
+                    await new Promise(r => setTimeout(r, 150));
+                }
+
+                const res = await fetch(`/api/sessions/${filename}`);
+                const state = await res.json();
+                
+                if (state.essay_text) {
+                    input.value = state.essay_text;
+                    const words = state.essay_text.trim().split(/\s+/).length;
+                    charCount.innerText = `${words} WORDS`;
+                }
+                if (state.session_id) currentSessionId = state.session_id;
+                
+                if (state.data && state.data.mentor_summary) {
+                    const data = state.data;
+                    window.lastAnalysisData = data;
+                    editorSec.classList.add('hidden');
+                    heroSec.classList.add('hidden');
+                    editorSec.classList.remove('animate-fade-out');
+                    heroSec.classList.remove('animate-fade-out');
+                    document.getElementById('bootSection').classList.add('hidden');
+                    
+                    resultsSec.classList.remove('hidden', 'animate-fade-out');
+                    // Force reflow
+                    void resultsSec.offsetWidth;
+                    resultsSec.classList.add('animate-fade-in');
+                    document.getElementById('genTime').innerText = (data.generation_time || 0) + 's';
+                    
+                    document.getElementById('mentorSummaryText').innerText = data.mentor_summary || "No summary provided.";
+                    
+                    const retrievedDocsList = document.getElementById('retrievedDocsList');
+                    if (data.retrieved_docs && data.retrieved_docs.length > 0) {
+                        window.currentRetrievedDocs = data.retrieved_docs;
+                        retrievedDocsList.innerHTML = data.retrieved_docs.map((doc, idx) => `
+                            <div class="rag-card" data-idx="${idx}" onmouseover="this.style.borderColor='var(--amber)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.05)'" style="background: rgba(255,255,255,0.03); padding: 1.5rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); cursor: pointer; transition: all 0.2s ease;">
+                                <h4 class="mono-label" style="color: var(--amber); margin-bottom: 0.5rem; font-size: 0.8rem;">SUCCESSFUL ESSAY ${doc.id} <span style="opacity: 0.5;">(CLICK TO READ FULL)</span></h4>
+                                <p style="color: var(--cream-dim); font-size: 0.9rem; line-height: 1.5; margin-bottom: 1rem; font-style: italic;">"${doc.excerpt}..."</p>
+                                <div style="background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 4px;">
+                                    <span class="mono-label" style="display: block; margin-bottom: 0.3rem; font-size: 0.7rem;">OFFICIAL ADMISSIONS FEEDBACK</span>
+                                    <p style="color: var(--cream); font-size: 0.95rem; margin: 0;">${doc.feedback}</p>
+                                </div>
+                            </div>
+                        `).join('');
+                        
+                        document.querySelectorAll('.rag-card').forEach(card => {
+                            card.addEventListener('click', (e) => {
+                                const idx = parseInt(e.currentTarget.getAttribute('data-idx'));
+                                const doc = window.currentRetrievedDocs[idx];
+                                document.getElementById('ragModalTitle').innerText = `SUCCESSFUL ESSAY ${doc.id}`;
+                                document.getElementById('ragModalFeedback').innerText = doc.feedback;
+                                document.getElementById('ragModalText').innerText = doc.full_text || (doc.excerpt + "\n\n[NOTE: This is a legacy session. Run a new analysis to retrieve the full 100% essay text.]");
+                                document.getElementById('ragModal').classList.remove('hidden');
+                            });
+                        });
+                    } else {
+                        retrievedDocsList.innerHTML = '';
+                    }
+                    
+                    document.getElementById('documentWorkspace').innerHTML = highlightQuotes(state.essay_text, data.diagnostics);
+                    diagList.innerHTML = data.diagnostics.map((d, i) => `
+                        <div class="diagnostic-card" data-diag-id="${i}">
+                            <h3 class="serif-title small">${d.title}</h3>
+                            <blockquote class="quote">"${d.quote}"</blockquote>
+                            <p class="feedback" id="feedback-${i}">${d.feedback}</p>
+                        </div>
+                    `).join('');
+                    setupInteractions();
+                    document.getElementById('chatSection').classList.remove('hidden');
+                    isCoreReady = true;
+                }
+                
+                if (state.chat_history && state.chat_history.length > 0) {
+                    chatHistory = state.chat_history;
+                    chatFeed.innerHTML = ''; 
+                    chatHistory.forEach(msg => {
+                        appendMessage(msg.role === 'user' ? 'user' : 'viorra', msg.content);
+                    });
+                }
+            } catch(e) { console.error("Error restoring session", e); }
+        }
+
+
+
+        // Manage History Logic
+        const deleteHistoryBtn = document.getElementById('deleteHistoryBtn');
+
+        const deleteConfirmModal = document.getElementById('deleteConfirmModal');
+        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+        const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+
+        deleteHistoryBtn.addEventListener('click', () => {
+            deleteConfirmModal.classList.remove('hidden');
+        });
+
+        cancelDeleteBtn.addEventListener('click', () => {
+            deleteConfirmModal.classList.add('hidden');
+        });
+        
+        deleteConfirmModal.addEventListener('click', (e) => {
+            if (e.target === deleteConfirmModal) deleteConfirmModal.classList.add('hidden');
+        });
+
+        const noHistoryModal = document.getElementById('noHistoryModal');
+        noHistoryModal.addEventListener('click', (e) => {
+            if (e.target === noHistoryModal) noHistoryModal.classList.add('hidden');
+        });
+
+        confirmDeleteBtn.addEventListener('click', async () => {
+            try {
+                confirmDeleteBtn.innerText = window.t ? window.t.deleting : 'Deleting...';
+                confirmDeleteBtn.disabled = true;
+                const res = await fetch('/api/factory_reset', { method: 'DELETE' });
+                if (!res.ok) throw new Error(`Server returned ${res.status}`);
+                chatHistory = [];
+                currentSessionId = "";
+                document.getElementById('sessionsList').innerHTML = `<p class="mono-label" style="text-align: center; margin-top: 2rem;">${window.t ? window.t.no_sessions : "NO SESSIONS FOUND"}</p>`;
+            } catch (err) {
+                showToast("Failed to nuke: " + err, true);
+            } finally {
+                confirmDeleteBtn.innerText = window.t ? window.t.delete_all_btn : 'Yes, Factory Reset';
+                confirmDeleteBtn.disabled = false;
+                deleteConfirmModal.classList.add('hidden');
+            }
+        });
+
+        // Legal Modals Logic
+        const tosLink = document.getElementById('tosLink');
+        const tosModal = document.getElementById('tosModal');
+
+        if (tosLink) {
+            tosLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                infoModal.classList.add('hidden');
+                tosModal.classList.remove('hidden');
+            });
+        }
+
+        tosModal.addEventListener('click', (e) => {
+            if (e.target === tosModal) tosModal.classList.add('hidden');
+        });
+
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const modals = [tosModal, settingsModal, deleteConfirmModal, infoModal, noHistoryModal];
+                modals.forEach(m => { if (m && !m.classList.contains('hidden')) m.classList.add('hidden'); });
+                
+                const sidebar = document.getElementById('sidebar');
+                const sidebarOverlay = document.getElementById('sidebarOverlay');
+                if (sidebar && sidebar.classList.contains('open')) {
+                    if (typeof toggleSidebar === 'function') {
+                        toggleSidebar();
+                    } else {
+                        sidebar.classList.remove('open');
+                        sidebarOverlay.classList.remove('active');
+                    }
+                }
+            }
+        });
+        
+    </script>
+</body>
+</html>

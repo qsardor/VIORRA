@@ -1,0 +1,24 @@
+
+
+# SUCCESSFUL ADMISSIONS EXAMPLES (RAG CONTEXT)
+The following are real, successful Ivy League personal statements and their official feedback. Use these as your baseline standard for evaluation.
+[[RAG_EXAMPLES]]
+
+# STUDENT ESSAY FOR EVALUATION
+"[[TEST_TEXT]]"
+
+# CONSTRAINTS AND OUTPUT FORMAT
+1. Input Validation: If the text is clearly NOT a college essay (e.g., random sci-fi stories, chat logs, code, or test strings), skip the evaluation and output exactly this JSON: { "error": "This does not appear to be a college admissions essay. Please upload a valid draft." }
+2. Reasoning Phase: If the input is valid, you must first output internal reasoning enclosed exactly within <think> and </think> tags. Deeply analyze the student's essay against the baseline examples.
+3. Output Generation: Immediately after the </think> tag, output a strict JSON payload matching the exact structure below. Do not use markdown blocks around the JSON.
+
+{
+  "mentor_summary": "[A comprehensive paragraph comparing the student's narrative and structure to the successful examples. Be objective, factual, and highly specific.]",
+  "diagnostics": [
+    {
+      "quote": "[A direct quote of a specific sentence or paragraph from the student's draft]",
+      "title": "[Short title describing the observation, e.g., 'Weak Hook' or 'Strong Authenticity']",
+      "feedback": "[Objective, constructive admissions feedback. Directly reference the successful examples to explain why this quote succeeds or fails.]"
+    }
+  ]
+}

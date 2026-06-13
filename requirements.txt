@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+huggingface_hub[hf_xet]
+litert-lm-api
+faiss-cpu
+datasets
+fastembed
+rich
+numpy
+langdetect
+python-multipart
+python-docx
+PyPDF2
+json-repair>=0.30.0
