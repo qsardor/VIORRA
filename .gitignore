@@ -1,0 +1,47 @@
+__pycache__/
+*.pyc
+*.pyo
+viorra.egg-info/
+dist/
+build/
+config.json
+.cache/
+models/
+.DS_Store
+.pypi_token.txt
+
+# Scratch work and Datasets
+viorra_database.json
+viorra/viorra_database.json
+viorra/static/unused/
+dataset_builder/
+build_db.py
+publish_dataset.py
+scrape_essays.py
+claude_prompts.md
+test_*.py
+
+# History and Reports
+*.zip
+VIORRA_Report*.txt
+*.log
+
+# Environment and Secrets
+.env
+.env.*
+secrets.json
+
+# Large ML Weights
+*.litertlm
+*.onnx
+*.bin
+*.h5
+
+# FAISS Vector Database Cache
+viorra_faiss.index
+viorra_corpus.pkl
+viorra_db_hash.txt
+*.docx
+sample*.txt
+faiss.py.gitignore
+test_webgpu.html

@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "viorra"
+version = "1.0.0"
+description = "VIORRA: The brutal personal statement reviewer, running locally."
+readme = "README.md"
+license = "AGPL-3.0-or-later"
+requires-python = ">=3.9"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "huggingface_hub[hf_xet]",
+    "litert-lm-api",
+    "faiss-cpu",
+    "datasets",
+    "fastembed",
+    "rich",
+    "numpy",
+    "langdetect",
+    "python-multipart",
+    "python-docx",
+    "pypdf",
+    "smolagents",
+    "json-repair>=0.30.0",
+    "psutil"
+]
+
+[tool.setuptools]
+packages = ["viorra"]
+
+[tool.setuptools.package-data]
+"*" = ["static/*", "system_prompt.txt", "chat_prompt.txt", "SOUL.md", "viorra_database.json"]
+
+[project.scripts]
+viorra = "viorra.cli:main"
