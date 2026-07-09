@@ -96,77 +96,52 @@ def profile_system_hardware():
             
     return best_gpu_name, best_vram
 
-def download_llm_native(dest_path, status_callback=None):
-    """Bypass HuggingFace Hub entirely for the massive 2.5GB model to prevent XET/LFS freezing."""
-    import urllib.request
+def download_file_native(url, dest_path, expected_size=None, expected_sha256=None, status_callback=None):
+    """
+    Downloads a file using the OS-native 'curl' command to guarantee resume capabilities
+    and bypass HuggingFace's heavy Python networking bottlenecks and API key requirements.
+    """
+    import os
+    import subprocess
+    import hashlib
     
-    url = "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm"
-    expected_sha256 = "181938105e0eefd105961417e8da75903eacda102c4fce9ce90f50b97139a63c"
-    expected_size = 2588147712
-    max_retries = 5
+    os.makedirs(os.path.dirname(dest_path), exist_ok=True)
     
-    for attempt in range(max_retries):
-        try:
-            existing_size = os.path.getsize(dest_path) if os.path.exists(dest_path) else 0
+    # If we know the size, skip if already complete
+    if expected_size and os.path.exists(dest_path) and os.path.getsize(dest_path) == expected_size:
+        return True
+        
+    if status_callback:
+        status_callback(f"Downloading {os.path.basename(dest_path)} via native OS curl...")
+        
+    cmd = [
+        "curl", 
+        "-L",           # Follow redirects natively
+        "-C", "-",      # Automatically resume interrupted downloads
+        "--retry", "5", # Native connection retries
+        "-o", dest_path,
+        url
+    ]
+    
+    # We use CREATE_NO_WINDOW on Windows to prevent terminal popups on the user's screen
+    creationflags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+    subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=creationflags)
+    
+    # Verify Hash if provided to prevent silent corruption
+    if expected_sha256 and os.path.exists(dest_path):
+        if status_callback: status_callback("Verifying checksum...")
+        hasher = hashlib.sha256()
+        with open(dest_path, 'rb') as f:
+            for chunk in iter(lambda: f.read(1024 * 1024), b""):
+                hasher.update(chunk)
+        if hasher.hexdigest() != expected_sha256:
+            os.remove(dest_path) # Nuke corrupted file
+            raise Exception("Checksum mismatch. Corrupted file deleted. Please restart.")
             
-            if existing_size > expected_size:
-                os.remove(dest_path)
-                existing_size = 0
-                
-            headers = {'User-Agent': 'VIORRA-Native-Downloader/1.0'}
-            if existing_size > 0 and existing_size < expected_size:
-                headers['Range'] = f'bytes={existing_size}-'
-                if status_callback: status_callback(f"Resuming download... (Attempt {attempt+1}/{max_retries})")
-            elif existing_size == expected_size:
-                pass # Already downloaded, skip to verification
-            else:
-                if status_callback: status_callback(f"Connecting... (Attempt {attempt+1}/{max_retries})")
-                
-            if existing_size < expected_size:
-                req = urllib.request.Request(url, headers=headers)
-                response = urllib.request.urlopen(req, timeout=15)
-                os.makedirs(os.path.dirname(dest_path), exist_ok=True)
-                
-                # Check if server honored the Range header (206 Partial Content)
-                mode = 'ab' if existing_size > 0 and response.status == 206 else 'wb'
-                if mode == 'wb':
-                    existing_size = 0 # Server ignored range, starting from scratch
-                    
-                downloaded = existing_size
-                with open(dest_path, mode) as f:
-                    while True:
-                        chunk = response.read(1024 * 64) # 64 KB chunks
-                        if not chunk:
-                            break
-                        f.write(chunk)
-                        downloaded += len(chunk)
-                        pct = int((downloaded / expected_size) * 100)
-                        if status_callback: status_callback(f"Downloading files... [{pct}%]")
-            else:
-                downloaded = existing_size
-                
-            # If download loop finishes or was already finished, verify full file hash
-            if downloaded == expected_size:
-                if status_callback: status_callback("Verifying checksum...")
-                hasher = hashlib.sha256()
-                with open(dest_path, 'rb') as f:
-                    # Hash in 1MB chunks so we don't blow up system RAM reading 2.5GB at once
-                    for chunk in iter(lambda: f.read(1024 * 1024), b""):
-                        hasher.update(chunk)
-                
-                actual_sha256 = hasher.hexdigest()
-                if actual_sha256 == expected_sha256:
-                    return # Download successful and verified!
-                else:
-                    # Hash failed. It's corrupted. Delete and restart the entire download on next loop
-                    os.remove(dest_path)
-                    if attempt == max_retries - 1:
-                        raise Exception(f"Checksum mismatch! Expected {expected_sha256}, got {actual_sha256}")
-            else:
-                # Connection dropped mid-way. Loop will retry and RESUME using the new file size.
-                time.sleep(2)
-                
-        except Exception as e:
-            if attempt == max_retries - 1:
-                raise Exception(f"Native LLM download failed after {max_retries} attempts: {e}")
-            time.sleep(2)
+    return True
+
+def download_llm_native(dest_path, status_callback=None):
+    """Downloads the massive 2.6GB Gemma 4 E2B QAT GGUF model using OS-native tools."""
+    url = "https://huggingface.co/unsloth/gemma-4-E2B-it-qat-GGUF/resolve/main/gemma-4-E2B-it-qat-UD-Q4_K_XL.gguf"
+    expected_size = 2620368960
+    download_file_native(url, dest_path, expected_size=expected_size, status_callback=status_callback)

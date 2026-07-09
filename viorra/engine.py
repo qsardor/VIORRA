@@ -3,9 +3,9 @@ VIORRA CORE ENGINE
 ------------------
 This module is the absolute heart of VIORRA. It handles:
 1. Hardware Profiling: Natively querying the OS (WMI/sysctl/lspci/nvidia-smi) to find the best GPU backend.
-2. Vector Database (RAG): Downloading and loading pre-compiled FAISS indexes and pickled corpora from Hugging Face for instant retrieval.
+2. Vector Database (RAG): Downloading and loading pre-compiled TurboVec indexes and pickled corpora from Hugging Face for instant retrieval.
 3. FastEmbed: Generating mathematical vectors of the user's essays to match against the Ivy League database.
-4. LiteRT (TensorFlow Lite C++): Initializing and binding the Gemma 4-E2B language model directly to the local GPU hardware via WebGPU/DirectX12.
+4. Llama.cpp: Initializing and binding the Gemma 4-E2B language model directly to the local GPU hardware.
 5. Inference: Providing the `analyze_essay` (one-shot review) and `chat_with_viorra` (conversational loop) API endpoints.
 
 NOTE: This file employs singletons (`_model_lock`, `is_loaded`) to ensure the massive AI models are only loaded into RAM/VRAM once across all threads.
@@ -51,19 +51,15 @@ boot_status_message = "Loading..."
 _model_lock = threading.Lock()
 _inference_lock = threading.Lock()
 
-def get_sys_prompt_path():
-    return os.path.join(os.path.dirname(__file__), "system_prompt.txt")
-
-def get_chat_prompt_path():
-    return os.path.join(os.path.dirname(__file__), "chat_prompt.txt")
-
-# Cache prompts in memory to avoid disk I/O on every request
-_cached_sys_prompt = None
-_cached_chat_sys_prompt = None
+# Cache templates in memory to avoid disk I/O on every request
 _cached_soul_content = None
+_cached_evaluate_instructions = None
+_cached_chat_prefix = None
+_cached_chat_main = None
+_cached_chat_suffix = None
 
 def get_cached_prompts():
-    global _cached_sys_prompt, _cached_chat_sys_prompt, _cached_soul_content
+    global _cached_soul_content, _cached_evaluate_instructions, _cached_chat_prefix, _cached_chat_main, _cached_chat_suffix
     if _cached_soul_content is None:
         try:
             with open(os.path.join(os.path.dirname(__file__), "SOUL.md"), "r", encoding="utf-8") as f:
@@ -71,28 +67,46 @@ def get_cached_prompts():
         except FileNotFoundError:
             _cached_soul_content = ""
             
-    if _cached_sys_prompt is None:
+    if _cached_evaluate_instructions is None:
         try:
-            with open(get_sys_prompt_path(), "r", encoding="utf-8") as f:
-                _cached_sys_prompt = f.read()
+            with open(os.path.join(os.path.dirname(__file__), "evaluate_instructions.txt"), "r", encoding="utf-8") as f:
+                _cached_evaluate_instructions = f.read()
         except FileNotFoundError:
-            _cached_sys_prompt = "[STUDENT ESSAY]\n\"[[TEST_TEXT]]\"\n[INSTRUCTIONS]\nOutput empty JSON."
+            _cached_evaluate_instructions = ""
             
-    if _cached_chat_sys_prompt is None:
+    if _cached_chat_prefix is None or _cached_chat_main is None or _cached_chat_suffix is None:
         try:
-            with open(get_chat_prompt_path(), "r", encoding="utf-8") as f:
-                _cached_chat_sys_prompt = f.read()
+            with open(os.path.join(os.path.dirname(__file__), "chat_instructions.txt"), "r", encoding="utf-8") as f:
+                chat_content = f.read()
+            # Split by section headers
+            parts = chat_content.split("=== PREFIX ===")
+            prefix_val = ""
+            main_val = ""
+            suffix_val = ""
+            if len(parts) > 1:
+                subparts = parts[1].split("=== MAIN ===")
+                prefix_val = subparts[0].strip() + "\n\n"
+                if len(subparts) > 1:
+                    subparts2 = subparts[1].split("=== SUFFIX ===")
+                    main_val = subparts2[0].strip()
+                    if len(subparts2) > 1:
+                        suffix_val = "\n\n" + subparts2[1].strip()
+            _cached_chat_prefix = prefix_val
+            _cached_chat_main = main_val
+            _cached_chat_suffix = suffix_val
         except FileNotFoundError:
-            _cached_chat_sys_prompt = "You are VIORRA, an Ivy League Admissions Coach."
+            _cached_chat_prefix = ""
+            _cached_chat_main = ""
+            _cached_chat_suffix = ""
             
-    return _cached_sys_prompt, _cached_chat_sys_prompt, _cached_soul_content
+    return _cached_soul_content, _cached_evaluate_instructions, _cached_chat_prefix, _cached_chat_main, _cached_chat_suffix
 
 def _update_boot_status(msg):
     global boot_status_message
     boot_status_message = msg
 
 def ensure_models_loaded():
-    """Lazy-load the massive LiteRT LLM and FAISS components into RAM."""
+    """Lazy-load the massive Llama.cpp LLM and TurboVec components into RAM."""
     global is_loaded, embedder, index, corpus_texts, corpus_feedback, llm_engine, boot_status_message
     
     with _model_lock:
@@ -122,30 +136,48 @@ def ensure_models_loaded():
         import huggingface_hub.file_download
         huggingface_hub.file_download.tqdm = UItqdm
         
-        import faiss
         from fastembed import TextEmbedding
-        from huggingface_hub import hf_hub_download
         from viorra.hardware import profile_system_hardware, download_llm_native
     
-        # --- 1. HARDWARE PROFILING & BACKEND SELECTION ---
+        # --- 1. HARDWARE PROFILING & GPU ENFORCEMENT ---
         best_gpu_name, best_vram = profile_system_hardware()
-    
-        # Backend selection is deferred to _instantiate_engine_with_autofix()
+        
+        is_gpu_supported = False
+        if best_gpu_name:
+            gpu_name_upper = best_gpu_name.upper()
+            if any(term in gpu_name_upper for term in ["NVIDIA", "AMD", "RADEON", "APPLE SILICON", "METAL"]):
+                is_gpu_supported = True
+                
+        import llama_cpp
+        if not is_gpu_supported or not getattr(llama_cpp, "llama_supports_gpu_offload", lambda: False)():
+            raise RuntimeError(
+                "VIORRA Error: No compatible GPU detected or llama-cpp-python was compiled without GPU offload support. "
+                "To guarantee sub-second admissions feedback, VIORRA runs strictly in GPU acceleration mode. "
+                "Running on CPU is disabled."
+            )
 
         # --- 2. VECTOR DATABASE (RAG) LOADING ---
         import pickle
+        from viorra.server import USER_DATA_DIR
+        from viorra.hardware import download_file_native
         
-        # Pull the pre-compiled database binaries, bypassing the massive local compilation tax
-        try:
-            # Try offline mode first to prevent 15-second timeout delays
-            index_file = hf_hub_download(repo_id="qsardor/viorra-admissions-essays", filename="viorra_faiss.index", repo_type="dataset", local_files_only=True)
-            corpus_file = hf_hub_download(repo_id="qsardor/viorra-admissions-essays", filename="viorra_corpus.pkl", repo_type="dataset", local_files_only=True)
-        except Exception:
-            # If local files are missing, we must be online to download them
-            index_file = hf_hub_download(repo_id="qsardor/viorra-admissions-essays", filename="viorra_faiss.index", repo_type="dataset")
-            corpus_file = hf_hub_download(repo_id="qsardor/viorra-admissions-essays", filename="viorra_corpus.pkl", repo_type="dataset")
+        local_index_file = os.path.join(USER_DATA_DIR, "viorra_index_local.tv")
+        local_corpus_file = os.path.join(USER_DATA_DIR, "viorra_corpus_local.pkl")
         
-        index = faiss.read_index(index_file)
+        if os.path.exists(local_index_file) and os.path.exists(local_corpus_file):
+            index_file = local_index_file
+            corpus_file = local_corpus_file
+        else:
+            index_file = os.path.join(USER_DATA_DIR, "viorra_index.tv")
+            corpus_file = os.path.join(USER_DATA_DIR, "viorra_corpus.pkl")
+            # Pull the pre-compiled database binaries natively
+            download_file_native("https://huggingface.co/datasets/qsardor/viorra-admissions-essays/resolve/main/viorra_index.tv", index_file, status_callback=_update_boot_status)
+            download_file_native("https://huggingface.co/datasets/qsardor/viorra-admissions-essays/resolve/main/viorra_corpus.pkl", corpus_file, status_callback=_update_boot_status)
+        
+        import turbovec
+        index = turbovec.TurboQuantIndex.load(index_file)
+        index.prepare() # Warm up the SIMD search caches
+        
         with open(corpus_file, "rb") as f:
             corpus_texts, corpus_feedback = pickle.load(f)
             
@@ -163,56 +195,37 @@ def ensure_models_loaded():
                 
             from huggingface_hub.utils import disable_progress_bars, enable_progress_bars
             disable_progress_bars()
-            embedder = TextEmbedding(model_name="sentence-transformers/all-MiniLM-L6-v2")
+            # [MEMORY PATCH]: Limit fastembed threads to 1 to prevent ONNX memory arena leaks under concurrency
+            embedder = TextEmbedding(model_name="sentence-transformers/all-MiniLM-L6-v2", threads=1)
             enable_progress_bars()
 
-        # --- 3. LITERT GEMMA 4 INITIALIZATION (NATIVE DOWNLOAD) ---
+        # --- 3. LLAMA.CPP GEMMA 4 INITIALIZATION ---
         from viorra.server import USER_DATA_DIR
-        llm_path = os.path.join(USER_DATA_DIR, "gemma-4-E2B-it.litertlm")
+        llm_path = os.path.join(USER_DATA_DIR, "gemma-4-E2B-it-qat-UD-Q4_K_XL.gguf")
         
-        # Check if the file is completely downloaded using the exact content-length
-        expected_size = 2588147712
-        if not os.path.exists(llm_path) or os.path.getsize(llm_path) != expected_size:
-            boot_status_message = "Starting download..."
+        if not os.path.exists(llm_path):
+            boot_status_message = "Downloading gemma-4-E2B-it-qat-UD-Q4_K_XL.gguf..."
+            from viorra.hardware import download_llm_native
             download_llm_native(llm_path, status_callback=_update_boot_status)
-        
+            
         # Restore original tqdm so we don't mess up other terminal apps
         huggingface_hub.file_download.tqdm = _orig_tqdm
         
-        boot_status_message = "Loading..."
+        boot_status_message = "Starting AI Inference Engine (CUDA)..."
         
-        # Create the high-performance C++ inference engine using native DirectX/Vulkan backends
-        import litert_lm
-        try:
-            litert_lm.set_min_log_severity(litert_lm.LogSeverity.ERROR)
-        except Exception:
-            pass
-
-        def _instantiate_engine_with_autofix():
-            backend = litert_lm.Backend.GPU() if best_gpu_name else litert_lm.Backend.CPU()
-            try:
-                return litert_lm.Engine(str(llm_path), backend=backend)
-            except Exception as e:
-                # Auto-Fixer: If LiteRT crashes due to corrupted WebGPU cache (driver update, hard reboot, etc.)
-                import glob
-                import os
-                error_str = str(e).lower()
-                if "cache" in error_str or "invalid argument" in error_str or "delegate" in error_str or "failed to create" in error_str:
-                    global boot_status_message
-                    boot_status_message = "Corrupted cache detected. Auto-fixing..."
-                    cache_dir = os.path.dirname(llm_path)
-                    for cache_file in glob.glob(os.path.join(cache_dir, "*.bin")):
-                        try:
-                            os.remove(cache_file)
-                        except Exception:
-                            pass
-                    # Retry instantiation after wiping the corrupted caches
-                    boot_status_message = "Rebuilding engine cache..."
-                    return litert_lm.Engine(str(llm_path), backend=backend)
-                raise e
-
-        llm_engine = _instantiate_engine_with_autofix()
-    
+        from llama_cpp import Llama
+        global llm_engine
+        
+        # We cap at 16384 context to avoid blowing up the 8GB RTX 4060 when MTP drafter heads are active.
+        llm_engine = Llama(
+            model_path=llm_path,
+            n_ctx=16384,          
+            n_gpu_layers=-1,      # Offload everything to GPU
+            flash_attn=True,      # Fast attention
+            n_threads=8,
+            verbose=False
+        )
+        
         is_loaded = True
         boot_status_message = "Ready!"
         
@@ -222,11 +235,17 @@ def unload_models():
     Called by the server's inactivity monitor.
     Drops the heavy C++ engine from GPU/RAM to prevent idle overheating and memory hoarding.
     """
-    global is_loaded, llm_engine, embedder, index
+    global is_loaded, embedder, index
     with _model_lock:
         if is_loaded:
+            # Drop the heavy C++ engine from GPU/RAM to prevent idle overheating and memory hoarding.
+            try:
+                if llm_engine:
+                    del llm_engine
+                    llm_engine = None
+            except Exception:
+                pass
             
-            llm_engine = None
             embedder = None
             index = None
             import gc
@@ -235,6 +254,71 @@ def unload_models():
 
 
 
+
+# --- CLAUDE ARCHITECTURE FIXES ---
+import logging
+
+BANNED_WORDS = [
+    "delve", "testament", "intricate", "tapestry", "underscore",
+    "crucial", "additionally", "actually", "vibrant", "breathtaking",
+    "showcasing", "pivotal"
+]
+
+def audit_output(text: str) -> list:
+    violations = [w for w in BANNED_WORDS if w in text.lower()]
+    if violations:
+        logging.warning(f"[VIORRA] Banned word violations: {violations}")
+    return violations
+
+ALLOWED_KEYS = {"quote", "feedback"}
+
+def enforce_schema(raw_json: dict) -> dict:
+    if "diagnostics" in raw_json:
+        for item in raw_json["diagnostics"]:
+            for k in list(item.keys()):
+                if k not in ALLOWED_KEYS:
+                    logging.warning(f"[VIORRA] Illegal JSON key stripped: {k}")
+                    del item[k]
+    return raw_json
+
+def extract_response(raw_output: str) -> str:
+    separators = ["<channel|>", "<|channel>thought", "[DIAGNOSIS]"]
+    for sep in separators:
+        if sep in raw_output:
+            raw_output = raw_output.split(sep)[-1].strip()
+    return raw_output
+
+def check_hallucination(output: str, essay_text: str) -> bool:
+    WHITELIST = {"VIORRA", "Ivy", "League", "Barnaby"}
+    output_nouns = set(re.findall(r'\b[A-Z][a-z]+\b', output))
+    essay_nouns = set(re.findall(r'\b[A-Z][a-z]+\b', essay_text))
+    foreign = output_nouns - essay_nouns - WHITELIST
+    if foreign:
+        logging.warning(f"[VIORRA] Possible hallucination ΓÇö unknown nouns: {foreign}")
+        return True
+    return False
+
+def build_prompt(template: str, mode: str, essay: str, rag: str, feedback: str) -> str:
+    soul_content, evaluate_inst, chat_prefix, chat_main, chat_suffix = get_cached_prompts()
+    
+    prompt = (template
+        .replace("[[MODE]]", mode)
+        .replace("[[ESSAY_TEXT]]", essay)
+        .replace("[[RAG_EXAMPLES]]", rag)
+        .replace("[[PREVIOUS_FEEDBACK]]", feedback))
+
+    if mode == "EVALUATE":
+        prompt = prompt.replace("[[CHAT_PREFIX]]", "")
+        prompt = prompt.replace("[[EVALUATE_INSTRUCTIONS]]", evaluate_inst)
+        prompt = prompt.replace("[[CHAT_SUFFIX]]", "")
+    elif mode == "CHAT":
+        prompt = prompt.replace("[[CHAT_PREFIX]]", chat_prefix)
+        prompt = prompt.replace("[[EVALUATE_INSTRUCTIONS]]", chat_main)
+        prompt = prompt.replace("[[CHAT_SUFFIX]]", chat_suffix)
+    assert "[[" not in prompt, "Unsubstituted placeholder remaining in prompt: " + str(re.findall(r'\[\[.*?\]\]', prompt))
+    return prompt
+# ---------------------------------
+
 def analyze_essay(test_text: str, debug_mode: bool = False):
     with _inference_lock:
         return _analyze_essay_impl(test_text, debug_mode)
@@ -242,10 +326,12 @@ def analyze_essay(test_text: str, debug_mode: bool = False):
 def _analyze_essay_impl(test_text: str, debug_mode: bool = False):
     """
     Main entry point for generating the "Admissions Mentor Summary".
-    Executes the complete pipeline: RAG Search -> Persona Injection -> LiteRT Generation.
+    Executes the complete pipeline: RAG Search -> Persona Injection -> Llama.cpp Generation.
     """
     ensure_models_loaded()
-    
+    import os
+    global llm_engine
+
     # --- SANITY CHECKS ---
     word_count = len(test_text.split())
     if word_count < 150:
@@ -260,7 +346,7 @@ def _analyze_essay_impl(test_text: str, debug_mode: bool = False):
     # FastEmbed converts the user's 500-word essay into a dense mathematical vector.
     query_embedding = np.array(list(embedder.embed([test_text])), dtype=np.float32)
     
-    # FAISS does a nearest-neighbor search through the thousands of Ivy League essays in milliseconds
+    # Turbovec does a nearest-neighbor search through the thousands of Ivy League essays in microseconds
     distances, indices = index.search(query_embedding, 2) # Get top 2 most similar historical essays
     rag_examples_text = ""
     retrieved_docs = []
@@ -280,24 +366,28 @@ def _analyze_essay_impl(test_text: str, debug_mode: bool = False):
         })
         
     # --- 2. PROMPT CONSTRUCTION (IDENTITY INJECTION) ---
-    sys_prompt, _, soul_content = get_cached_prompts()
-    if soul_content:
-        sys_prompt = soul_content + "\n\n" + sys_prompt
-
-    # Dynamic injection of student identity for conversational realism
-    sys_prompt += "\n\nCRITICAL DIRECTIVE: You are talking directly to the student. Always address them generally as 'you' and 'your'. Example of GOOD phrasing: 'Your essay...' or 'You need to fix...'. Example of BAD phrasing: 'The student's essay demonstrates...' or 'The student writes...'. NEVER refer to them in the third person."
+    soul_content, _, _, _, _ = get_cached_prompts()
     
-    sys_prompt = sys_prompt.replace("[[TEST_TEXT]]", test_text)
-    sys_prompt = sys_prompt.replace("[[RAG_EXAMPLES]]", rag_examples_text)
+    # We now strictly use the Claude SOUL architecture template
+    sys_prompt = build_prompt(
+        template=soul_content,
+        mode="EVALUATE",
+        essay=test_text,
+        rag=rag_examples_text,
+        feedback="None"
+    )
     
-    # --- 3. LITERT INFERENCE (NATIVE GEMMA 4 FORMAT) ---
-    import litert_lm
-    system_messages = [litert_lm.Message.system(sys_prompt)]
+    # --- 3. NATIVE LLAMA.CPP INFERENCE ---
+    # Manually construct Gemma 4 formatting to avoid template fragility
+    raw_prompt = f"<|turn|>system\n{sys_prompt}<|turn|>user\nAnalyze my essay and provide your feedback.<|turn|>model\n"
     
     infer_start = time.time()
-    with llm_engine.create_conversation(messages=system_messages) as conversation:
-        response = conversation.send_message("Analyze my essay and provide your feedback.")
-        output_text = response["content"][0]["text"]
+    response = llm_engine.create_completion(
+        prompt=raw_prompt,
+        max_tokens=2048,
+        temperature=0.0
+    )
+    output_text = response["choices"][0]["text"]
     infer_end = time.time()
     infer_time = infer_end - infer_start
             
@@ -305,22 +395,21 @@ def _analyze_essay_impl(test_text: str, debug_mode: bool = False):
     import json_repair
     
     try:
-        # 1. Strip reasoning blocks out entirely (both legacy <think> and native Gemma 4 channel tokens)
-        text_to_parse = re.sub(r'<think>.*?</think>', '', output_text, flags=re.DOTALL)
-        text_to_parse = re.sub(r'<\|channel\|?>thought.*?<channel\|>', '', text_to_parse, flags=re.DOTALL)
-        text_to_parse = text_to_parse.strip()
+        text_to_parse = extract_response(output_text)
+        audit_output(text_to_parse)
+        check_hallucination(text_to_parse, test_text)
         
         # 2. Try to extract markdown block first
         json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', text_to_parse, re.DOTALL)
         if json_match:
-            parsed = json_repair.loads(json_match.group(1))
+            parsed = enforce_schema(json_repair.loads(json_match.group(1)))
         else:
             # 3. Fallback: extract the outermost curly braces in case of raw output
             fallback_match = re.search(r'(\{.*\})', text_to_parse, re.DOTALL)
             if fallback_match:
-                parsed = json_repair.loads(fallback_match.group(1))
+                parsed = enforce_schema(json_repair.loads(fallback_match.group(1)))
             else:
-                parsed = json_repair.loads(text_to_parse)
+                parsed = enforce_schema(json_repair.loads(text_to_parse))
                 
         parsed["generation_time"] = round(time.time() - start_time, 2)
         parsed["raw_output"] = output_text
@@ -355,13 +444,23 @@ def _chat_with_viorra_impl(essay_text: str, previous_feedback: str, chat_history
     
 
     
-    # Construct a stateful prompt using cached memory
-    _, chat_sys_prompt, soul_content = get_cached_prompts()
-    if soul_content:
-        chat_sys_prompt = soul_content + "\n\n" + chat_sys_prompt
-        
-    chat_sys_prompt = chat_sys_prompt.replace("[[ESSAY_TEXT]]", essay_text)
-    chat_sys_prompt = chat_sys_prompt.replace("[[PREVIOUS_FEEDBACK]]", previous_feedback)
+    soul_content, _, _, _, _ = get_cached_prompts()
+    
+    rag_injection = "None"
+    if retrieved_docs:
+        rag_injection = "\n\n--- Reference: Successful Admissions Essays ---\n"
+        for i, doc in enumerate(retrieved_docs):
+            rag_injection += f"Example {i+1}:\n"
+            rag_injection += f"Excerpt: {doc.get('excerpt', '')}\n"
+            rag_injection += f"Feedback: {doc.get('feedback', '')}\n\n"
+            
+    chat_sys_prompt = build_prompt(
+        template=soul_content,
+        mode="CHAT",
+        essay=essay_text,
+        rag=rag_injection,
+        feedback=previous_feedback
+    )
     
     try:
         from viorra.memory_agent import load_memory
@@ -373,31 +472,61 @@ def _chat_with_viorra_impl(essay_text: str, previous_feedback: str, chat_history
             chat_sys_prompt = memory_injection + "\n\n" + chat_sys_prompt
     except Exception as e:
         pass
-    
-    if retrieved_docs:
-        rag_injection = "\n\n--- Reference: Successful Admissions Essays ---\n"
-        for i, doc in enumerate(retrieved_docs):
-            rag_injection += f"Example {i+1}:\n"
-            rag_injection += f"Excerpt: {doc.get('excerpt', '')}\n"
-            rag_injection += f"Feedback: {doc.get('feedback', '')}\n\n"
-        chat_sys_prompt += rag_injection
 
-    # Build the conversation using Gemma 4's native system role and message history
-    import litert_lm
-    system_messages = [litert_lm.Message.system(chat_sys_prompt)]
-    for msg in chat_history:
-        if msg['role'] == 'user':
-            system_messages.append(litert_lm.Message.user(msg['content']))
+    # Build the conversation manually for Gemma 4 native format
+    global llm_engine
+    
+    # [CONTEXT WINDOW PATCH]: Truncate chat history to the last 10 messages to prevent 128K VRAM OOM crashes on the GPU
+    safe_chat_history = chat_history[-10:] if len(chat_history) > 10 else chat_history
+    
+    raw_prompt = f"<|turn|>system\n{chat_sys_prompt}"
+    for msg in safe_chat_history:
+        # DeepMind Guideline: Strip out internal <|channel>thought tokens to save context window space
+        # and prevent constraint degradation over long conversations.
+        clean_content = msg["content"]
+        import re
+        clean_content = re.sub(r'<\|channel\|?>thought.*?<channel\|>', '', clean_content, flags=re.DOTALL)
+        clean_content = re.sub(r'<think>.*?</think>', '', clean_content, flags=re.DOTALL)
+        clean_content = clean_content.strip()
+        
+        if msg["role"] == "user":
+            raw_prompt += f"<|turn|>user\n{clean_content}"
         else:
-            system_messages.append(litert_lm.Message.model(litert_lm.Contents.of(msg['content'])))
+            raw_prompt += f"<|turn|>model\n{clean_content}"
+            
+    raw_prompt += f"<|turn|>user\n{new_message.strip()}<|turn|>model\n"
     
     try:
-        with llm_engine.create_conversation(messages=system_messages) as conversation:
-            response = conversation.send_message(new_message)
-            output_text = response["content"][0]["text"]
+        response = llm_engine.create_completion(
+            prompt=raw_prompt,
+            max_tokens=1024,
+            temperature=0.7
+        )
+        output_text = response["choices"][0]["text"]
+        
+        # Strip MTP Draft Channel Bleed
+        if "<channel|>" in output_text:
+            output_text = output_text.split("<channel|>")[-1].strip()
+        
+        # [COMMUNITY RESEARCH APPLIED]: The Anti-Slop filter natively scrubs generic AI buzzwords
+        # because 2B parameters will inevitably regress to training slop over long contexts.
+        import re
+        slop_map = {
+            r"\bdelve\b": "explore",
+            r"\btapestry\b": "structure",
+            r"\btestament to\b": "proof of",
+            r"\bmultifaceted\b": "complex",
+            r"\bnuanced\b": "detailed",
+            r"\bleverage\b": "use"
+        }
+        for slop, replacement in slop_map.items():
+            output_text = re.sub(slop, replacement, output_text, flags=re.IGNORECASE)
             
         return {"response": output_text.strip()}
     except Exception as e:
+        import logging
+        import traceback
+        logging.error(f"[VIORRA CHAT ENGINE ERROR] {e}\n{traceback.format_exc()}")
         error_msg = str(e).lower()
         if "context" in error_msg or "token" in error_msg or "size" in error_msg or "exceed" in error_msg or "length" in error_msg or "allocate" in error_msg:
             return {"error": "CONTEXT_LIMIT_REACHED"}

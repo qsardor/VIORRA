@@ -7,6 +7,8 @@
     <link rel="icon" type="image/x-icon" href="/static/favicon.ico?v=2">
     <link rel="stylesheet" href="/static/style.css?v=13">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
 </head>
 <body>
     <div id="viorraToast" class="toast hidden"></div>
@@ -190,6 +192,7 @@
             <h2 class="mono-label" style="color: var(--cream); margin-bottom: 1rem; letter-spacing: 1px; font-size: 0.9rem;">SUBMISSION NOTICE</h2>
             <div style="width: 40px; height: 1px; background: rgba(255,255,255,0.1); margin: 0 auto 1.5rem auto;"></div>
             <p id="errorModalText" style="color: var(--cream-dim); font-size: 1rem; line-height: 1.6; margin-bottom: 2rem;"></p>
+            <pre id="errorModalDiagnostics" class="hidden" style="text-align: left; background: #1a1a1a; padding: 10px; font-size: 0.8rem; color: #ff5555; overflow-x: auto; max-height: 200px; margin-bottom: 1rem; white-space: pre-wrap;"></pre>
             <button id="closeErrorModalBtn" class="primary-btn" style="width: 100%;">Return to Editor</button>
         </div>
     </div>
@@ -263,6 +266,7 @@
         const btn = document.getElementById('analyzeBtn');
         const input = document.getElementById('essayInput');
         const charCount = document.getElementById('charCount');
+        const chatInput = document.getElementById('chatInput');
         
         const MIN_WORDS = 150;
         input.addEventListener('input', function() {
@@ -472,8 +476,15 @@
                             } else {
                                 if (heroSec) heroSec.classList.remove('hidden');
                                 if (editorSec) editorSec.classList.remove('hidden');
-                                if (heroSec) heroSec.classList.add('animate-fade-in');
-                                if (editorSec) editorSec.classList.add('animate-fade-in');
+                                // Antigravity Entry Animation
+                                gsap.fromTo(heroSec, 
+                                    { opacity: 0, y: -30, scale: 0.95 }, 
+                                    { opacity: 1, y: 0, scale: 1, duration: 1, ease: "expo.out" }
+                                );
+                                gsap.fromTo(editorSec, 
+                                    { opacity: 0, y: 40, rotationX: -10 }, 
+                                    { opacity: 1, y: 0, rotationX: 0, duration: 1, ease: "expo.out", delay: 0.2 }
+                                );
                             }
                             window.wasResultsVisible = false;
                         }
@@ -598,7 +609,7 @@
                     el.classList.toggle('active', force);
                 });
             };
-            document.querySelectorAll('.diagnostic-card, .highlight-span').forEach(el => {
+            document.querySelectorAll('.diagnostic-card:not(.benchmark-card), .highlight-span').forEach(el => {
                 el.addEventListener('mouseenter', () => toggleActive(el.dataset.diagId, true));
                 el.addEventListener('mouseleave', () => toggleActive(el.dataset.diagId, false));
                 
@@ -698,6 +709,13 @@
                     if(!response.ok || data.error || data.detail) {
                         const errMsg = data.error || data.detail || "Analysis failed.";
                         document.getElementById('errorModalText').innerText = errMsg;
+                        const diagBlock = document.getElementById('errorModalDiagnostics');
+                        if (data.diagnostics) {
+                            diagBlock.innerText = data.diagnostics;
+                            diagBlock.classList.remove('hidden');
+                        } else {
+                            diagBlock.classList.add('hidden');
+                        }
                         document.getElementById('errorModal').classList.remove('hidden');
                         isAnalyzing = false;
                         document.getElementById('sidebarToggleBtn').classList.remove('hidden');
@@ -707,8 +725,34 @@
                         heroSection.classList.add('animate-fade-in');
                     } else {
                         results.classList.remove('hidden');
-                        results.classList.add('animate-slide-up');
                         results.scrollIntoView({behavior: 'smooth'});
+                        
+                        // GSAP Antigravity Animation
+                        gsap.fromTo("#resultsSection", 
+                            { opacity: 0, y: 50 }, 
+                            { opacity: 1, y: 0, duration: 0.8, ease: "power3.out" }
+                        );
+                        
+                        gsap.fromTo(".diagnostic-card", 
+                            { opacity: 0, y: 60, rotationX: -20, translateZ: -50 }, 
+                            { opacity: 1, y: 0, rotationX: 0, translateZ: 0, duration: 0.8, stagger: 0.1, ease: "power3.out", delay: 0.2 }
+                        );
+                        
+                        gsap.fromTo(".workspace-container", 
+                            { opacity: 0, scale: 0.95 }, 
+                            { opacity: 1, scale: 1, duration: 0.8, ease: "power3.out", delay: 0.1 }
+                        );
+
+                        gsap.fromTo(".chat-section", 
+                            { opacity: 0, y: 100, rotationX: 10 }, 
+                            { 
+                                scrollTrigger: {
+                                    trigger: ".chat-section",
+                                    start: "top 85%"
+                                },
+                                opacity: 1, y: 0, rotationX: 0, duration: 1, ease: "power3.out"
+                            }
+                        );
                         
                         // Store retrieved docs for backend context, but do NOT render them in the UI
                         if (data.retrieved_docs && data.retrieved_docs.length > 0) {
@@ -880,11 +924,11 @@
                 
                 if (sixtySevenCount === 1) {
                     appendMessage('viorra', "Bro... No... Not here.");
-                    chatHistory.push({role: "user", content: text}, {role: "assistant", content: "Bro... No... Not here."});
+                    chatHistory.push({role: "user", content: text}, {role: "model", content: "Bro... No... Not here."});
                     return;
                 } else if (sixtySevenCount === 2) {
                     appendMessage('viorra', "BRO STOP!!! Or I gonna nuke this place");
-                    chatHistory.push({role: "user", content: text}, {role: "assistant", content: "BRO STOP!!! Or I gonna nuke this place"});
+                    chatHistory.push({role: "user", content: text}, {role: "model", content: "BRO STOP!!! Or I gonna nuke this place"});
                     return;
                 } else if (sixtySevenCount >= 3) {
                     // Trigger the Nuke
@@ -900,7 +944,8 @@
                 diagCards.forEach(card => {
                     const fbElem = card.querySelector('.feedback');
                     if (fbElem) {
-                        const title = card.querySelector('h3').innerText;
+                        const titleEl = card.querySelector('h3');
+                        const title = titleEl ? titleEl.innerText : "Feedback";
                         context += `[${title}]\n${fbElem.innerText}\n\n`;
                     }
                 });
@@ -948,7 +993,6 @@
                 
                 if (data.error === "CONTEXT_LIMIT_REACHED") {
                     appendMessage('viorra', "&#9888;&#65039; **SYSTEM ERROR**: 128K Context Window Exhausted. The conversation has grown too massive for the local AI to hold in memory. Please start a new session.");
-                    chatHistory.pop(); 
                 } else if(data.error) {
                     appendMessage('viorra', "SYSTEM ERROR: " + (data.details || data.error));
                 } else {
@@ -1213,8 +1257,8 @@
                         window.currentRetrievedDocs = data.retrieved_docs;
                     }
                     
-                    document.getElementById('documentWorkspace').innerHTML = highlightQuotes(state.essay_text, data.diagnostics);
-                    let diagHTML = data.diagnostics.map((d, i) => `
+                    document.getElementById('documentWorkspace').innerHTML = highlightQuotes(state.essay_text, data.diagnostics || []);
+                    let diagHTML = (data.diagnostics || []).map((d, i) => `
                         <div class="diagnostic-card" data-diag-id="${i}">
                             <blockquote class="quote">"${d.quote}"</blockquote>
                             <p class="feedback" id="feedback-${i}">${d.feedback || "No feedback returned."}</p>
@@ -1241,8 +1285,13 @@
                 }
                 
                 if (state.chat_history && state.chat_history.length > 0) {
-                    chatHistory = state.chat_history;
-                    chatFeed.innerHTML = ''; 
+                    // Migrate legacy 'assistant' roles to 'model' for Gemma 4 compatibility
+                    chatHistory = state.chat_history.map(msg => {
+                        if (msg.role === 'assistant') {
+                            return { ...msg, role: 'model' };
+                        }
+                        return msg;
+                    });
                     chatHistory.forEach(msg => {
                         appendMessage(msg.role === 'user' ? 'user' : 'viorra', msg.content);
                     });

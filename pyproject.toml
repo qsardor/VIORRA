@@ -4,17 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "viorra"
-version = "1.0.0"
+version = "1.1.0"
 description = "VIORRA: The brutal personal statement reviewer, running locally."
 readme = "README.md"
 license = "AGPL-3.0-or-later"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
     "fastapi",
     "uvicorn",
-    "huggingface_hub[hf_xet]",
     "litert-lm-api",
-    "faiss-cpu",
     "datasets",
     "fastembed",
     "rich",
@@ -25,14 +23,18 @@ dependencies = [
     "pypdf",
     "smolagents",
     "json-repair>=0.30.0",
-    "psutil"
+    "psutil",
+    "openai>=2.44.0",
+    "turbovec",
+    "requests",
+    "kaggle>=1.7.4.5",
 ]
 
 [tool.setuptools]
 packages = ["viorra"]
 
 [tool.setuptools.package-data]
-"*" = ["static/*", "system_prompt.txt", "chat_prompt.txt", "SOUL.md", "viorra_database.json"]
+"*" = ["static/*", "SOUL.md", "evaluate_instructions.txt", "chat_instructions.txt"]
 
 [project.scripts]
 viorra = "viorra.cli:main"

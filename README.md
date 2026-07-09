@@ -1,157 +1,50 @@
 <div align="center">
 
-<img src="https://capsule-render.vercel.app/api?type=waving&color=0:6C63FF,100:A855F7&height=200&section=header&text=VIORRA&fontSize=80&fontAlignY=38&animation=fadeIn&fontColor=ffffff&desc=The%20Zero-Hallucination%20Admissions%20Engine&descAlignY=60&descSize=20" width="100%"/>
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:6C63FF,100:A855F7&height=220&section=header&text=VIORRA&fontSize=80&animation=fadeIn" width="100%"/>
 
-<br/>
+# 🎓 VIORRA: Elite AI College Admissions Coach
 
-<p align="center">
-  <a href="https://huggingface.co/spaces/qsardor/VIORRA">
-    <img src="https://img.shields.io/badge/🤗%20Try%20Demo-Live%20Now-FFD21E?style=for-the-badge&labelColor=1a1a2e" />
-  </a>
-  &nbsp;
-  <img src="https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white&labelColor=1a1a2e" />
-  &nbsp;
-  <img src="https://img.shields.io/badge/Gemma_4-E2B--IT-FF6F00?style=for-the-badge&logo=google&logoColor=white&labelColor=1a1a2e" />
-  &nbsp;
-  <img src="https://img.shields.io/badge/LiteRT-C++_Engine-4285F4?style=for-the-badge&logo=google&logoColor=white&labelColor=1a1a2e" />
-  &nbsp;
-  <img src="https://img.shields.io/badge/License-AGPL--3.0-8B5CF6?style=for-the-badge&labelColor=1a1a2e" />
-</p>
+[![Version](https://img.shields.io/badge/Release-v1.1.0-blueviolet?style=for-the-badge)](https://github.com/qsardor/VIORRA)
+[![Model](https://img.shields.io/badge/Brain-Gemma--4--it-green?style=for-the-badge)](https://huggingface.co/google/gemma-4-E2B-it)
+[![RAG](https://img.shields.io/badge/RAG%20Index-TurboVec-orange?style=for-the-badge)](https://huggingface.co/datasets/qsardor/viorra-admissions-essays)
+[![License](https://img.shields.io/badge/License-AGPL--3.0-red?style=for-the-badge)](LICENSE)
 
-<br/>
+**VIORRA** is an open-source AI admissions coach built for students and educators to get Ivy-League level critiques on personal statements running 100% locally. 
 
-> **VIORRA** is the only AI built to tell students the truth about their college essays.\
-> Not compliments. Not suggestions. **The exact changes needed to get accepted.**
-
-<br/>
-
-```bash
-git clone https://github.com/qsardor/VIORRA.git
-cd VIORRA
-pip install -e .
-viorra
-```
-
-<br/>
+Instead of superficial grammar checks, VIORRA uses **Gemma 4 (2B)** and a native SIMD vector database (**TurboVec**) to evaluate structural narrative, authenticity, and institutional fit. Your essays never leave your machine.
 
 </div>
 
 ---
 
-## 🎯 The Problem
+## ✨ Features & Updates (v1.1.0)
 
-Every year, millions of students make the same fatal mistake. They open a browser and ask ChatGPT to review their college essay.
-
-**This is a disaster.**
-
-| The Problem | Why It Kills Applications |
-|---|---|
-| 💬 Generic chatbots **sugarcoat** feedback | They are trained by RLHF to be "agreeable", not honest |
-| 📉 They grade against **SEO blog rubrics** | Not real Ivy League admissions standards |
-| 💸 Human consultants cost **$100–$500/doc** | Creating a deeply unequal admissions system |
-| 🌀 They **hallucinate scores** with no data source | Arbitrary grades with zero mathematical grounding |
-
-VIORRA was built to solve every one of these problems simultaneously.
-
----
-
-## ⚡ The Solution
-
-<div align="center">
-
-```
-╔══════════════════════════════════════════════════════════════╗
-║                       YOUR ESSAY                            ║
-╚══════════════════╤══════════════════════════╤═══════════════╝
-                   │                          │
-         ┌─────────▼──────────┐    ┌──────────▼──────────┐
-         │   1. THE CONTEXT   │    │    RAG RETRIEVAL    │
-         │  FAISS Vector DB   │    │  Top 2 Real Essays  │
-         │  all-MiniLM-L6-v2  │    │  Mathematically     │
-         │  (384-dim vectors) │    │  Matched to Yours   │
-         └─────────┬──────────┘    └──────────┬──────────┘
-                   └──────────────────────────┘
-                                  │
-                   ┌──────────────▼──────────────┐
-                   │      2. THE BRAIN           │
-                   │   Gemma 4 E2B-IT via        │
-                   │   Google LiteRT C++ Engine  │
-                   │   RAG-Anchored Reasoning    │
-                   └──────────────┬──────────────┘
-                                  │
-                   ┌──────────────▼──────────────┐
-                   │      VIORRA'S VERDICT       │
-                   │   Honest. Anchored. Real.   │
-                   └─────────────────────────────┘
-```
-
-</div>
-
-VIORRA uses a **Duo Architecture** that chains two AI systems together. The LLM is **never** given free reign — it is always anchored to a real, mathematically verified dataset of Ivy League essays before it generates a single word of feedback.
-
----
-
-## 🧠 Why VIORRA Beats Every Chatbot
-
-<table>
-  <thead>
-    <tr>
-      <th>Feature</th>
-      <th>ChatGPT / Claude</th>
-      <th>VIORRA</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>Data Source</td>
-      <td>❌ SEO blogs & Wikipedia</td>
-      <td>✅ Real JHU accepted essays</td>
-    </tr>
-    <tr>
-      <td>Feedback Honesty</td>
-      <td>❌ RLHF-trained to be "nice"</td>
-      <td>✅ Hardcoded brutal <code>SOUL.md</code> persona</td>
-    </tr>
-    <tr>
-      <td>Score Grounding</td>
-      <td>❌ Arbitrary hallucinated score</td>
-      <td>✅ Mathematically anchored via FAISS</td>
-    </tr>
-    <tr>
-      <td>Cost</td>
-      <td>❌ $20/month subscription</td>
-      <td>✅ Free (prototype phase)</td>
-    </tr>
-    <tr>
-      <td>Privacy</td>
-      <td>❌ Essay sent to external servers</td>
-      <td>✅ Runs on your own hardware</td>
-    </tr>
-    <tr>
-      <td>Framework Bloat</td>
-      <td>❌ PyTorch + Transformers (20 GB+)</td>
-      <td>✅ Pure C++ LiteRT backend (~3.5 GB)</td>
-    </tr>
-  </tbody>
-</table>
+*   ⚡ **SIMD-Accelerated Local RAG:** Powered by native **TurboVec 4-bit quantized indexing** (replacing legacy FAISS). Features sub-millisecond retrieval latency (`~0.04 ms`) and a tiny RAM footprint (`~1.98 GB`), loading 615 Ivy League examples in under `115 ms`.
+*   🌍 **Multi-Domain Admissions Support:** Pre-grounded in US Common App (650-word narrative), UK/UCAS (4,000-character academic), UCLA PIQ, and MBA Insead formats.
+*   💬 **Interactive CLI Discussion:** Run `viorra --cli <file>` to generate a full admissions report and instantly transition into an interactive, conversational discussion with the AI coach.
+*   🧠 **Autonomous Memory Graph:** Powered by background `smolagents` thread workers. It automatically saves personal facts, recurring weaknesses, and essay topics to your local knowledge graph, preventing context amnesia.
+*   🚀 **High-Throughput Local Inference:** Powered by `llama.cpp` / `llama-cpp-python` with strict GPU-only enforcement (CUDA/Vulkan/Metal). Optimized context slicing limits history allocation to prevent VRAM overflow, outputting up to `~81.92 tokens/sec` on consumer GPUs.
 
 ---
 
 ## 📊 Real Performance Stats
 
-Benchmarked live on a standard consumer laptop (RTX 4060):
+Benchmarked live on a standard consumer laptop (NVIDIA RTX 4060 Laptop GPU):
 
 <div align="center">
 
-| Metric | Result |
-|:---|:---:|
-| 🚀 Cold Boot Time | **~6.3 seconds** |
-| 🔍 RAG Vector Search | **~67 ms** |
-| ⚡ Inference Speed | **~68 Tokens/sec** |
-| 🧠 RAM Footprint | **~1.3 GB** |
-| 🎮 VRAM Usage | **~3.5 GB** |
+| Metric | llama.cpp + TurboVec Result |
+| :--- | :---: |
+| 🚀 Cold Boot Time (Model & VDB Load) | **~7.04 seconds** |
+| 🔍 Query Embedding & Search (RAG Pipeline) | **~24.8 ms** (with `< 0.05 ms` native TurboVec index search) |
+| ⚡ Inference Speed | **~81.92 Tokens/sec** |
+| 🧠 RAM Footprint | **~1.98 GB** |
+| 🎮 VRAM Footprint | **~3.5 GB** (during active generation) |
 
-Run it yourself: `viorra --benchmark`
+Run the benchmark yourself:
+```bash
+viorra --benchmark
+```
 
 </div>
 
@@ -159,60 +52,77 @@ Run it yourself: `viorra --benchmark`
 
 ## 🚀 Quick Start
 
+### 1. The 60-Second Quick Start
+Clone the repository, install the dependencies, and boot the web application in a single command:
 ```bash
-# 1. Clone the repository
-git clone https://github.com/qsardor/VIORRA.git
-cd VIORRA
-
-# 2. Install dependencies
-pip install -e .
-
-# 3. Launch (opens in your browser at localhost:8000)
-viorra
+git clone https://github.com/qsardor/VIORRA.git && cd VIORRA && pip install -e . && viorra
 ```
 
 > [!NOTE]
-> On first launch, VIORRA automatically downloads the Gemma 4 LLM and RAG vector database (~2.5 GB). Subsequent boots use the local cache.
-
-**Don't want to install?** → [Try the live demo on HuggingFace Spaces](https://huggingface.co/spaces/qsardor/VIORRA)
+> On the first startup, VIORRA natively pulls the 4-bit Q4_K_XL GGUF Gemma model and the pre-compiled RAG database (approx 2.5 GB) from Hugging Face. Subsequent boots load instantly from local cache.
 
 ---
 
 ## 🛠️ CLI Reference
 
+For automated testing, scripting, and offline critiques:
+
 ```bash
-# Analyze an essay file without launching the web UI
+# Analyze an essay file and enter interactive chat mode with the AI mentor
 viorra --cli my_essay.txt
 
-# Run a real-time hardware benchmark
+# Run a cold-boot hardware benchmark of the model and RAG pipeline
 viorra --benchmark
 
-# Check GPU/VRAM compatibility
+# Verify system hardware compatibility and active GPU/VRAM layer offloads
 viorra --status
 
-# Force-sync the latest Ivy League RAG database
-viorra --update
-
-# Purge all downloaded model caches
+# Clear all downloaded model caches (HuggingFace and FastEmbed)
 viorra --clear-cache
 
-# Wipe all user data and sessions
+# Delete all local user data and logs
 viorra --factory-reset
+
+# Force redownload of the latest RAG database and models
+viorra --update
+
+# Run a direct diagnostic test against the raw GGUF model (bypasses middleware)
+viorra --test-raw
+
+# Run the automated QA diagnostics suite
+viorra debug
 ```
 
 ---
 
-## 🏗️ Tech Stack
+## 🏗️ Technical Architecture
 
 <div align="center">
 
-| Layer | Technology | Purpose |
-|:---:|:---:|:---|
-| 🧠 **Brain** | [Gemma 4 E2B-IT](https://huggingface.co/google/gemma-4-E2B-it) via [LiteRT](https://ai.google.dev/edge/litert) | Chain-of-Thought reasoning engine |
-| 📚 **Context** | [FAISS](https://github.com/facebookresearch/faiss) + [all-MiniLM-L6-v2](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2) | Vector search over Ivy League essay DB |
-| ⚙️ **Backend** | FastAPI + Uvicorn | Async REST API server |
-| 🖥️ **Frontend** | Vanilla HTML / CSS / JS | Zero-framework SPA |
-| 📦 **Packaging** | Local PIP Install | `pip install -e .` |
+```mermaid
+flowchart TD
+    User([User]) --> UI[Glassmorphic Web GUI / CLI]
+    UI --> API[FastAPI + Uvicorn]
+    
+    subgraph Data Layer
+        API --> TV[(TurboVec SIMD DB)]
+        API --> KG[(smolagents Memory Graph)]
+    end
+    
+    subgraph Compute Layer
+        API --> LLM{llama.cpp}
+        LLM --> Model[Gemma 4 2B Q4_K_XL]
+    end
+```
+
+| Layer | Component | Description |
+| :---: | :--- | :--- |
+| 🧠 **Inference** | `llama.cpp` | Gemma 4 GGUF engine with strict GPU-only acceleration (Vulkan/CUDA/Metal) |
+| 📚 **Context** | TurboVec (SIMD) | Native SIMD-quantized vector search database |
+| ⚙️ **Backend** | FastAPI | Async ASGI server handling chat and background threads |
+| 🖥️ **Frontend** | Vanilla SPA | HTML5 / CSS / JavaScript |
+| 🤖 **Memory** | smolagents | Background knowledge graph compiler |
+| ☁️ **Cloud Demo** | ZeroGPU + Gradio | Hugging Face Spaces deployment for public web access |
 
 </div>
 
@@ -220,31 +130,42 @@ viorra --factory-reset
 
 ## 💻 System Requirements
 
-| Component | Minimum | Recommended |
-|:---:|:---:|:---:|
-| **RAM** | 8 GB | 16 GB+ |
-| **VRAM** | 4 GB | 6 GB+ |
-| **GPU** | Integrated | NVIDIA / AMD Dedicated |
-| **Storage** | 4 GB free | 8 GB free |
-| **OS** | Windows 10 / macOS 12 / Ubuntu 20.04 | Latest |
-
 > [!IMPORTANT]
-> VIORRA's database is trained exclusively on **US Common App essays**. UCAS (UK) personal statement support is in active development.
+> **GPU-Only Execution:** To guarantee sub-second admissions feedback, VIORRA runs strictly in GPU acceleration mode. CPU fallback execution is disabled in code.
+
+| Component | Minimum Specification | Recommended Specification |
+| :---: | :--- | :--- |
+| 🎮 **Graphics (VRAM)** | **4 GB VRAM** (100% `llama.cpp` GPU offloading `n_gpu_layers=-1` via CUDA/Vulkan/Metal. VRAM footprint `~3.5 GB` during active inference) | **6 GB+ VRAM** (NVIDIA CUDA / Vulkan / Apple Metal) |
+| 🧠 **System Memory (RAM)** | **8 GB RAM** (`~1.98 GB` active system footprint; CPU mode fallback is disabled) | **16 GB+** |
+| 💿 **Storage Space** | **3.5 GB** of free disk space (Model: `gemma-4-E2B-it-qat-UD-Q4_K_XL.gguf`, Database: `viorra_index.tv`) | **SSD Storage** |
+| ⚙️ **Processor (CPU)** | **x86_64 CPU with AVX2 support** (Required for TurboVec SIMD acceleration) | **AVX-512 compatible or Apple Silicon** |
+| 🖥️ **Operating System** | Windows 10/11, macOS 12+ (Apple Silicon), or Linux (Ubuntu 20.04+) | Latest OS releases |
+
+> [!TIP]
+> **Windows CUDA 13.x vs Vulkan Compatibility:** Modern Windows host machines running NVIDIA Driver 610+ (CUDA 13.x) encounter severe stability regressions and VRAM memory leaks when compiling or running `llama.cpp` natively via CUDA. To achieve flawless GPU acceleration without system-level downgrades, the **Vulkan backend** for `llama-cpp-python` is used on Windows.
 
 ---
 
-## 🔭 Roadmap
+## 🔭 Project Roadmap (Current v1.1.0)
 
-- [x] Core RAG + LiteRT inference pipeline
-- [x] Chat follow-up with conversational memory
-- [x] Session history with export/import
-- [x] Local environment setup via `pip install -e .`
-- [x] CLI headless analysis mode
-- [x] Live hardware benchmark (`--benchmark`)
-- [ ] Cloud-hosted version (centralized server)
-- [ ] UCAS / UK personal statement support
-- [ ] Multi-university RAG dataset expansion
-- [ ] Mobile-responsive UI
+- [x] Native TurboVec 4-bit quantized SIMD RAG pipeline
+- [x] Web GUI with glassmorphic styling and transitions
+- [x] Conversational chat mode with thread memory
+- [x] In-process background memory compiler (`smolagents`)
+- [x] Interactive CLI discussion loop (`viorra --cli`)
+- [x] Support for UK/UCAS and UCLA PIQ admissions essay formats
+- [x] Cloud demo deployment on Hugging Face Spaces using ZeroGPU and Gradio
+
+---
+
+## 🔮 Known Limitations & Upcoming in v1.1.1
+
+We are deeply aware of how Viorra's current base model behaves. While the native Gemma 4 (2B) model is powerful, its raw instruction-following behavior can sometimes lack the nuanced, empathetic tone required for elite admissions counseling. We know it needs dedicated fine-tuning to reach its ultimate potential.
+
+**What we are actively building for v1.1.1:**
+*   **Humanities Dataset Phase:** We are currently compiling a massive, specialized dataset (aiming for 1,000+ high-quality paired examples) containing deep reasoning traces from real admissions counselors.
+*   **Unsloth QLoRA Fine-Tuning:** The upcoming version will feature a custom-trained model layer aligned specifically towards human empathy, qualitative feedback, and psychological reasoning.
+*   **Multi-University Expansion:** Broadening feedback datasets to cover institution-specific quirks for 20+ top global universities.
 
 ---
 

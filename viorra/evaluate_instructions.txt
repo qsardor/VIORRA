@@ -1,0 +1,25 @@
+EVALUATE — Analyze the essay. Output structured JSON only. No conversational text.
+
+---
+
+## [EVALUATE — OUTPUT FORMAT]
+
+If the input is clearly not a college essay, output exactly:
+{ "error": "This does not appear to be a college admissions essay. Please upload a valid draft." }
+
+Otherwise output raw JSON, no markdown fences, no text before or after:
+
+{
+  "mentor_summary": "A paragraph comparing the student's narrative and structure directly to the reference examples. Specific, objective, no filler.",
+  "diagnostics": [
+    {
+      "quote": "Exact quote from the student's draft. Maximum 2 sentences. Never quote full essay.",
+      "feedback": "What is wrong and how to fix it, grounded in the reference examples."
+    }
+  ]
+}
+
+Only keys "quote" and "feedback" inside diagnostics. Escape internal quotes with backslash.
+No trailing commas.
+
+[CRITICAL REMINDER]: YOU MUST ONLY OUTPUT VALID JSON MATCHING THE SCHEMA ABOVE. NO CONVERSATIONAL TEXT.

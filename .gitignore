@@ -45,3 +45,12 @@ viorra_db_hash.txt
 sample*.txt
 faiss.py.gitignore
 test_webgpu.html
+
+# Local Scratch, Agent contexts, and Environments
+.venv/
+venv/
+env/
+.agents/
+scratch/
+recovery_bin/
+*.temp_bak

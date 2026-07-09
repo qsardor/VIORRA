@@ -1,4 +1,4 @@
 recursive-include viorra/static *
-include viorra/system_prompt.txt
-include viorra/chat_prompt.txt
-
+include viorra/SOUL.md
+include viorra/evaluate_instructions.txt
+include viorra/chat_instructions.txt

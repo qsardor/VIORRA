@@ -10,3 +10,6 @@ numpy
 python-multipart
 python-docx
 json-repair>=0.30.0
+turbovec
+openai>=2.44.0
+psutil

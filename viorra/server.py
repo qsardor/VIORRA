@@ -20,7 +20,7 @@ import logging
 from datetime import datetime
 from contextlib import asynccontextmanager
 from typing import List, Dict, Any
-from fastapi import FastAPI, HTTPException, UploadFile, File, BackgroundTasks
+from fastapi import FastAPI, HTTPException, UploadFile, File, BackgroundTasks, UploadFile, File, BackgroundTasks
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -112,23 +112,8 @@ class EndpointFilter(logging.Filter):
 logging.getLogger("uvicorn.access").addFilter(EndpointFilter())
 
 # --- STORAGE UTILITIES ---
-def get_storage_dir():
-    import platform
-    system = platform.system()
-    home = os.path.expanduser("~")
-    
-    if system == "Windows":
-        base_path = os.environ.get("LOCALAPPDATA", os.path.join(home, "AppData", "Local"))
-    elif system == "Darwin":
-        base_path = os.path.join(home, "Library", "Application Support")
-    else:
-        base_path = os.environ.get("XDG_CONFIG_HOME", os.path.join(home, ".config"))
-        
-    storage_path = os.path.join(base_path, "Viorra")
-    os.makedirs(os.path.join(storage_path, "Sessions"), exist_ok=True)
-    return storage_path
-
-USER_DATA_DIR = get_storage_dir()
+USER_DATA_DIR = os.path.join(os.path.expanduser("~"), "AppData", "Local", "Viorra")
+os.makedirs(os.path.join(USER_DATA_DIR, "Sessions"), exist_ok=True)
 CONFIG_PATH = os.path.join(USER_DATA_DIR, "config.json")
 # -------------------------
 
@@ -141,6 +126,24 @@ class AnalyzeRequest(BaseModel):
     text: str
     debug_mode: bool = False
 
+@app.post("/api/upload")
+async def api_upload(file: UploadFile = File(...)):
+    try:
+        content = await file.read()
+        filename = file.filename.lower()
+        if filename.endswith(".txt"):
+            text = content.decode("utf-8", errors="ignore")
+        elif filename.endswith(".docx"):
+            import docx
+            import io
+            doc = docx.Document(io.BytesIO(content))
+            text = "\n".join([p.text for p in doc.paragraphs])
+        else:
+            return {"error": "Unsupported file format. Please upload .txt or .docx"}
+        return {"text": text.strip()}
+    except Exception as e:
+        return {"error": str(e)}
+
 @app.post("/api/analyze")
 async def analyze_endpoint(request: AnalyzeRequest):
     global last_active_time
@@ -151,8 +154,6 @@ async def analyze_endpoint(request: AnalyzeRequest):
 
     # Run the heavy analysis in a separate thread so it doesn't block the async loop
     result = await asyncio.to_thread(analyze_essay, request.text, request.debug_mode)
-    if "error" in result:
-        raise HTTPException(status_code=400, detail=result["error"])
         
     result["session_id"] = session_id
     return result
@@ -186,8 +187,10 @@ async def chat_endpoint(request: ChatRequest, background_tasks: BackgroundTasks)
         request.new_message,
         request.retrieved_docs
     )
-    if "error" in result:
-        raise HTTPException(status_code=400, detail=result["error"])
+
+    # If the engine returned an error dict, surface it cleanly instead of crashing
+    if "response" not in result:
+        return result
         
     # Compile the chat log for the memory agent
     chat_log = ""
@@ -197,8 +200,12 @@ async def chat_endpoint(request: ChatRequest, background_tasks: BackgroundTasks)
     chat_log += f"Viorra: {result['response']}\n"
     
     # Spawn the silent background extraction thread during idle time
-    from viorra.memory_agent import run_memory_extraction
-    background_tasks.add_task(run_memory_extraction, chat_log)
+    try:
+        from viorra.memory_agent import run_memory_agent_async
+        background_tasks.add_task(run_memory_agent_async, request.new_message, result['response'])
+    except Exception as e:
+        import logging
+        logging.error(f"[MEMORY AGENT ERROR] {e}")
         
     # The frontend will call /api/sessions/save to sync the state instead of appending to chat logs
     return result
@@ -274,26 +281,28 @@ async def factory_reset():
     import shutil
     import asyncio
     
-    # Wipe user sessions and config
-    if os.path.exists(USER_DATA_DIR):
+    # Wipe user sessions
+    sessions_dir = os.path.join(USER_DATA_DIR, "Sessions")
+    if os.path.exists(sessions_dir):
         try:
-            shutil.rmtree(USER_DATA_DIR)
+            shutil.rmtree(sessions_dir)
+            os.makedirs(sessions_dir, exist_ok=True)
         except Exception:
             pass
             
-    # Wipe only Viorra-specific HuggingFace caches (not other projects)
-    hf_cache = os.path.expanduser("~/.cache/huggingface/hub")
-    viorra_repos = [
-        "datasets--qsardor--viorra-admissions-essays",
-        "models--litert-community--gemma-4-E2B-it-litert-lm"
-    ]
-    for repo in viorra_repos:
-        repo_path = os.path.join(hf_cache, repo)
-        if os.path.exists(repo_path):
+    # Wipe config and knowledge graph memory
+    config_path = os.path.join(USER_DATA_DIR, "config.json")
+    memory_path = os.path.join(USER_DATA_DIR, "user_knowledge_graph.json")
+    
+    for file_path in [config_path, memory_path]:
+        if os.path.exists(file_path):
             try:
-                shutil.rmtree(repo_path)
+                os.remove(file_path)
             except Exception:
                 pass
+            
+    # [PROTECTION]: We explicitly do NOT wipe USER_DATA_DIR or the HuggingFace cache 
+    # to protect the 2.5GB litertlm model and the FAISS embeddings from being destroyed.
             
     # Trigger self-destruct 1 second after returning success to frontend
     async def delayed_shutdown():
