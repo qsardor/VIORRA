@@ -164,7 +164,7 @@ def main():
     if args.status:
         from viorra.hardware import profile_system_hardware
         console.print(f"[bold cyan]VIORRA Hardware Diagnostics[/bold cyan]")
-        console.print(f"Scanning host system for LiteRT compatibility...\n")
+        console.print(f"Scanning host system for Llama.cpp compatibility...\n")
         
         gpu, vram = profile_system_hardware()
         if gpu and vram > 0:

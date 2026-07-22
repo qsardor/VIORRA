@@ -4,7 +4,7 @@
 
 # 🎓 VIORRA: Elite AI College Admissions Coach
 
-[![Version](https://img.shields.io/badge/Release-v1.1.0-blueviolet?style=for-the-badge)](https://github.com/qsardor/VIORRA)
+[![Version](https://img.shields.io/badge/Release-v1.2-blueviolet?style=for-the-badge)](https://github.com/qsardor/VIORRA)
 [![Model](https://img.shields.io/badge/Brain-Gemma--4--it-green?style=for-the-badge)](https://huggingface.co/google/gemma-4-E2B-it)
 [![RAG](https://img.shields.io/badge/RAG%20Index-TurboVec-orange?style=for-the-badge)](https://huggingface.co/datasets/qsardor/viorra-admissions-essays)
 [![License](https://img.shields.io/badge/License-AGPL--3.0-red?style=for-the-badge)](LICENSE)
@@ -14,6 +14,15 @@
 Instead of superficial grammar checks, VIORRA uses **Gemma 4 (2B)** and a native SIMD vector database (**TurboVec**) to evaluate structural narrative, authenticity, and institutional fit. Your essays never leave your machine.
 
 </div>
+
+---
+
+## ✨ Features & Updates (v1.2)
+
+*   🧠 **Personality & Boundary Overhaul:** Completely rewrote VIORRA's core `SOUL.md` identity prompt. VIORRA now exhibits a sharper, more human-like dry humor and strictly refuses to output numeric scores or engage with out-of-scope jailbreaks and coding questions. 
+*   🚀 **llama.cpp Migration Completed:** Officially transitioned all internal nomenclature and docstrings from LiteRT to Llama.cpp to reflect the underlying C++ inference engine accurately.
+*   🛡️ **Context Window Hardening:** Truncated the chat history array in `engine.py` to securely limit the VRAM allocation, preventing 128K context overflow crashes on consumer GPUs.
+*   🧹 **MTP & Think Token Scrubbing:** Added robust regex scrubbing to prevent any internal `<|think|>` blocks or drafted `<channel|>` tokens from leaking into the user-facing response.
 
 ---
 

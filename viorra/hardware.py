@@ -7,7 +7,7 @@ def profile_system_hardware():
     """
     Scans the host system to determine the most powerful available GPU and its VRAM.
     This bypasses standard PyTorch/CUDA checks and queries the OS natively (WMI for Windows, 
-    sysctl for Mac, lspci for Linux) to ensure LiteRT WebGPU can latch onto the correct hardware.
+    sysctl for Mac, lspci for Linux) to ensure Llama.cpp can latch onto the correct hardware.
     
     Returns:
         tuple: (best_gpu_name (str), best_vram_in_bytes (int))

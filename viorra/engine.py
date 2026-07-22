@@ -500,13 +500,21 @@ def _chat_with_viorra_impl(essay_text: str, previous_feedback: str, chat_history
         response = llm_engine.create_completion(
             prompt=raw_prompt,
             max_tokens=1024,
-            temperature=0.7
+            temperature=0.7,
+            stop=["<|turn|>", "<|startoftext|>", "<|endoftext|>", "<|im_end|>"]
         )
         output_text = response["choices"][0]["text"]
         
-        # Strip MTP Draft Channel Bleed
+        # Strip MTP Draft Channel Bleed and leaked chat/think tokens
         if "<channel|>" in output_text:
             output_text = output_text.split("<channel|>")[-1].strip()
+        
+        # Scrub any leaked internal tokens that bleed through on edge cases
+        import re as _re
+        output_text = _re.sub(r'<\|think\|?>.*?(<\|/think\|?>|$)', '', output_text, flags=_re.DOTALL)
+        output_text = _re.sub(r'<\|startoftext\|>', '', output_text)
+        output_text = _re.sub(r'<\|turn\|>.*', '', output_text, flags=_re.DOTALL)
+        output_text = output_text.strip()
         
         # [COMMUNITY RESEARCH APPLIED]: The Anti-Slop filter natively scrubs generic AI buzzwords
         # because 2B parameters will inevitably regress to training slop over long contexts.

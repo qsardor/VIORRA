@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "viorra"
-version = "1.1.0"
+version = "1.2"
 description = "VIORRA: The brutal personal statement reviewer, running locally."
 readme = "README.md"
 license = "AGPL-3.0-or-later"
@@ -12,7 +12,7 @@ requires-python = ">=3.10"
 dependencies = [
     "fastapi",
     "uvicorn",
-    "litert-lm-api",
+    "llama-cpp-python",
     "datasets",
     "fastembed",
     "rich",

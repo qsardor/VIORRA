@@ -1,8 +1,7 @@
 fastapi
 uvicorn
 huggingface_hub
-litert-lm-api
-faiss-cpu
+llama-cpp-python
 datasets
 fastembed
 rich

@@ -5,9 +5,9 @@ This module manages the HTTP web server and API endpoints for the UI frontend.
 It uses FastAPI to serve standard REST endpoints (/api/analyze, /api/chat).
 
 CRITICAL ARCHITECTURE NOTE:
-All heavy AI workloads (LiteRT inference, FastEmbed computation, FAISS searches)
+All heavy AI workloads (Llama.cpp inference, FastEmbed computation, TurboVec searches)
 are dispatched to background threads using `asyncio.to_thread()`. This is absolutely
-vital because LiteRT is a synchronous blocking C++ engine. If we ran it in the main
+vital because Llama.cpp is a synchronous blocking C++ engine. If we ran it in the main
 asyncio event loop, the entire web server would hang and stop responding to UI requests.
 """
 
@@ -302,7 +302,7 @@ async def factory_reset():
                 pass
             
     # [PROTECTION]: We explicitly do NOT wipe USER_DATA_DIR or the HuggingFace cache 
-    # to protect the 2.5GB litertlm model and the FAISS embeddings from being destroyed.
+    # to protect the 2.62GB GGUF model and the TurboVec embeddings from being destroyed.
             
     # Trigger self-destruct 1 second after returning success to frontend
     async def delayed_shutdown():
