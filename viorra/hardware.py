@@ -141,7 +141,6 @@ def download_file_native(url, dest_path, expected_size=None, expected_sha256=Non
     return True
 
 def download_llm_native(dest_path, status_callback=None):
-    """Downloads the massive 2.6GB Gemma 4 E2B QAT GGUF model using OS-native tools."""
-    url = "https://huggingface.co/unsloth/gemma-4-E2B-it-qat-GGUF/resolve/main/gemma-4-E2B-it-qat-UD-Q4_K_XL.gguf"
-    expected_size = 2620368960
-    download_file_native(url, dest_path, expected_size=expected_size, status_callback=status_callback)
+    """Downloads the fine-tuned Viorra 2.6GB QAT GGUF model using OS-native tools."""
+    url = "https://huggingface.co/qsardor/Viorra-Gemma-4-E2B-GGUF/resolve/main/gemma-4-e2b-it.Q4_K_M.gguf"
+    download_file_native(url, dest_path, expected_size=None, status_callback=status_callback)

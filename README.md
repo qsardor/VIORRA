@@ -4,7 +4,7 @@
 
 # 🎓 VIORRA: Elite AI College Admissions Coach
 
-[![Version](https://img.shields.io/badge/Release-v1.2-blueviolet?style=for-the-badge)](https://github.com/qsardor/VIORRA)
+[![Version](https://img.shields.io/badge/Release-v1.3-blueviolet?style=for-the-badge)](https://github.com/qsardor/VIORRA)
 [![Model](https://img.shields.io/badge/Brain-Gemma--4--it-green?style=for-the-badge)](https://huggingface.co/google/gemma-4-E2B-it)
 [![RAG](https://img.shields.io/badge/RAG%20Index-TurboVec-orange?style=for-the-badge)](https://huggingface.co/datasets/qsardor/viorra-admissions-essays)
 [![License](https://img.shields.io/badge/License-AGPL--3.0-red?style=for-the-badge)](LICENSE)
@@ -14,6 +14,12 @@
 Instead of superficial grammar checks, VIORRA uses **Gemma 4 (2B)** and a native SIMD vector database (**TurboVec**) to evaluate structural narrative, authenticity, and institutional fit. Your essays never leave your machine.
 
 </div>
+
+---
+
+## ✨ Features & Updates (v1.3)
+
+*   🧠 **Fine-Tuned Viorra Reasoning Model:** Integrated the newly fine-tuned Gemma 4 model (`qsardor/Viorra-Gemma-4-E2B-GGUF`) aligned specifically for admissions essays, empathy, and psychological reasoning. The prompt templates have been updated to utilize `<|think|>` tokens for chain-of-thought analysis before output.
 
 ---
 

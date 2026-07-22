@@ -201,10 +201,10 @@ def ensure_models_loaded():
 
         # --- 3. LLAMA.CPP GEMMA 4 INITIALIZATION ---
         from viorra.server import USER_DATA_DIR
-        llm_path = os.path.join(USER_DATA_DIR, "gemma-4-E2B-it-qat-UD-Q4_K_XL.gguf")
+        llm_path = os.path.join(USER_DATA_DIR, "gemma-4-e2b-it.Q4_K_M.gguf")
         
         if not os.path.exists(llm_path):
-            boot_status_message = "Downloading gemma-4-E2B-it-qat-UD-Q4_K_XL.gguf..."
+            boot_status_message = "Downloading gemma-4-e2b-it.Q4_K_M.gguf..."
             from viorra.hardware import download_llm_native
             download_llm_native(llm_path, status_callback=_update_boot_status)
             
@@ -379,7 +379,7 @@ def _analyze_essay_impl(test_text: str, debug_mode: bool = False):
     
     # --- 3. NATIVE LLAMA.CPP INFERENCE ---
     # Manually construct Gemma 4 formatting to avoid template fragility
-    raw_prompt = f"<|turn|>system\n{sys_prompt}<|turn|>user\nAnalyze my essay and provide your feedback.<|turn|>model\n"
+    raw_prompt = f"<|turn|>system\n<|think|>\n{sys_prompt}<|turn|>user\nAnalyze my essay and provide your feedback.<|turn|>model\n"
     
     infer_start = time.time()
     response = llm_engine.create_completion(
@@ -479,7 +479,7 @@ def _chat_with_viorra_impl(essay_text: str, previous_feedback: str, chat_history
     # [CONTEXT WINDOW PATCH]: Truncate chat history to the last 10 messages to prevent 128K VRAM OOM crashes on the GPU
     safe_chat_history = chat_history[-10:] if len(chat_history) > 10 else chat_history
     
-    raw_prompt = f"<|turn|>system\n{chat_sys_prompt}"
+    raw_prompt = f"<|turn|>system\n<|think|>\n{chat_sys_prompt}"
     for msg in safe_chat_history:
         # DeepMind Guideline: Strip out internal <|channel>thought tokens to save context window space
         # and prevent constraint degradation over long conversations.
