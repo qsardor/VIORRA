@@ -379,7 +379,7 @@ def _analyze_essay_impl(test_text: str, debug_mode: bool = False):
     
     # --- 3. NATIVE LLAMA.CPP INFERENCE ---
     # Manually construct Gemma 4 formatting to avoid template fragility
-    raw_prompt = f"<|turn|>system\n<|think|>\n{sys_prompt}<|turn|>user\nAnalyze my essay and provide your feedback.<|turn|>model\n"
+    raw_prompt = f"<bos><|turn>system\n<|think|>\n{sys_prompt}<turn|>\n<|turn>user\nAnalyze my essay and provide your feedback.<turn|>\n<|turn>model\n"
     
     infer_start = time.time()
     response = llm_engine.create_completion(
@@ -479,7 +479,7 @@ def _chat_with_viorra_impl(essay_text: str, previous_feedback: str, chat_history
     # [CONTEXT WINDOW PATCH]: Truncate chat history to the last 10 messages to prevent 128K VRAM OOM crashes on the GPU
     safe_chat_history = chat_history[-10:] if len(chat_history) > 10 else chat_history
     
-    raw_prompt = f"<|turn|>system\n<|think|>\n{chat_sys_prompt}"
+    raw_prompt = f"<bos><|turn>system\n<|think|>\n{chat_sys_prompt}<turn|>\n"
     for msg in safe_chat_history:
         # DeepMind Guideline: Strip out internal <|channel>thought tokens to save context window space
         # and prevent constraint degradation over long conversations.
@@ -490,18 +490,18 @@ def _chat_with_viorra_impl(essay_text: str, previous_feedback: str, chat_history
         clean_content = clean_content.strip()
         
         if msg["role"] == "user":
-            raw_prompt += f"<|turn|>user\n{clean_content}"
+            raw_prompt += f"<|turn>user\n{clean_content}<turn|>\n"
         else:
-            raw_prompt += f"<|turn|>model\n{clean_content}"
+            raw_prompt += f"<|turn>model\n{clean_content}<turn|>\n"
             
-    raw_prompt += f"<|turn|>user\n{new_message.strip()}<|turn|>model\n"
+    raw_prompt += f"<|turn>user\n{new_message.strip()}<turn|>\n<|turn>model\n"
     
     try:
         response = llm_engine.create_completion(
             prompt=raw_prompt,
             max_tokens=1024,
             temperature=0.7,
-            stop=["<|turn|>", "<|startoftext|>", "<|endoftext|>", "<|im_end|>"]
+            stop=["<turn|>", "<|turn>", "<|startoftext|>", "<|endoftext|>", "<|im_end|>"]
         )
         output_text = response["choices"][0]["text"]
         
