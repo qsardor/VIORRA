@@ -107,6 +107,7 @@ def main():
     parser.add_argument("--update", action="store_true", help="Force redownload of the latest RAG database and models")
     parser.add_argument("--benchmark", action="store_true", help="Run a real-time hardware performance test for the AI engine")
     parser.add_argument("--test-raw", action="store_true", help="Run a direct diagnostic test against the raw GGUF model (bypasses middleware)")
+    parser.add_argument("--gui-test", action="store_true", help="Print AI agent browser testing selectors and launch URL with TOS bypass")
     args = parser.parse_args()
 
     if args.factory_reset:
@@ -159,6 +160,21 @@ def main():
         else:
             console.print(f"[dim]No native LLM found to delete.[/dim]")
             
+        sys.exit(0)
+
+    if args.gui_test:
+        console.print(f"[bold cyan]=== VIORRA AI AGENT GUI TESTING HELPER ===[/bold cyan]")
+        console.print("[dim]Use the following configuration for headless browser testing (Puppeteer/Playwright):[/dim]\n")
+        console.print("[bold yellow]Bypass TOS URL:[/bold yellow] http://127.0.0.1:8000/?bypass_tos=true")
+        console.print("\n[bold yellow]Determinism Selector Map (data-testid):[/bold yellow]")
+        console.print("  - [green]Essay Input:[/green]      [data-testid='essay-input']")
+        console.print("  - [green]Analyze Button:[/green]   [data-testid='analyze-btn']")
+        console.print("  - [green]Chat Input:[/green]       [data-testid='chat-input']")
+        console.print("  - [green]Chat Send Button:[/green] [data-testid='chat-send-btn']")
+        console.print("  - [green]Debug Toggle:[/green]     [data-testid='debug-toggle']")
+        console.print("  - [green]Incognito Toggle:[/green] [data-testid='incognito-toggle']")
+        console.print("  - [green]TOS Checkbox:[/green]     [data-testid='tos-checkbox']")
+        console.print("  - [green]TOS Accept Button:[/green] [data-testid='tos-accept-btn']")
         sys.exit(0)
 
     if args.status:

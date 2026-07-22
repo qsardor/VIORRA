@@ -423,6 +423,15 @@ wheels = [
 ]
 
 [[package]]
+name = "diskcache"
+version = "5.6.3"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/3f/21/1c1ffc1a039ddcc459db43cc108658f32c57d271d7289a2794e401d0fdb6/diskcache-5.6.3.tar.gz", hash = "sha256:2c3a3fa2743d8535d832ec61c2054a1641f41775aa7c556758a109941e33e4fc", size = 67916, upload-time = "2023-08-31T06:12:00.316Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/3f/27/4570e78fc0bf5ea0ca45eb1de3818a23787af9b390c0b0a0033a1b8236f9/diskcache-5.6.3-py3-none-any.whl", hash = "sha256:5e31b2d5fbad117cc363ebaf6b689474db18a1f6438bc82358b024abd4c2ca19", size = 45550, upload-time = "2023-08-31T06:11:58.822Z" },
+]
+
+[[package]]
 name = "distro"
 version = "1.9.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1022,15 +1031,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/0e/72/a3add0e4eec4eb9e2569554f7c70f4a3c27712f40e3284d483e88094cc0e/langdetect-1.0.9.tar.gz", hash = "sha256:cbc1fef89f8d062739774bd51eda3da3274006b3661d199c2655f6b3f6d605a0", size = 981474, upload-time = "2021-05-07T07:54:13.562Z" }
 
 [[package]]
-name = "litert-lm-api"
-version = "0.13.1"
+name = "llama-cpp-python"
+version = "0.3.34"
 source = { registry = "https://pypi.org/simple" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/58/ae/5d1e2862d14ad1b08bdbc3392574dde37b98a06f4efb5181d946766ec81c/litert_lm_api-0.13.1-py3-none-macosx_12_0_arm64.whl", hash = "sha256:4a1bb68dbf5a60af9ac5fe03331968a7b4e91779e721cb531e6b41e71f2a2d77", size = 20352139, upload-time = "2026-06-03T16:07:00.625Z" },
-    { url = "https://files.pythonhosted.org/packages/12/a7/c23db30dc19ad07a188eeeab48fd8d676554e8647dac6e9dbf62be0f82f1/litert_lm_api-0.13.1-py3-none-manylinux_2_27_aarch64.whl", hash = "sha256:4092c4f7ad75fb23d83bc5b00a9aa6896a19d75f148515efeef0d079ba22ef74", size = 42542393, upload-time = "2026-06-03T16:07:05.619Z" },
-    { url = "https://files.pythonhosted.org/packages/36/27/bb0c2e084d59938bc12f960db50e7e8e056337ed286f31468aaa39bc9d9a/litert_lm_api-0.13.1-py3-none-manylinux_2_27_x86_64.whl", hash = "sha256:b981d55e057be9664f30670d5c1faa6e738ad516a2617dbdac10dc6b5b409cca", size = 44865394, upload-time = "2026-06-03T16:07:15.086Z" },
-    { url = "https://files.pythonhosted.org/packages/8e/0f/8edfe4800c95e230928529e5c6f305646ce3b7f497bad745a54a8127a52e/litert_lm_api-0.13.1-py3-none-win_amd64.whl", hash = "sha256:e2d6b03a9e38e17bebea9a74cc8a68553a05a5fee13a5b353be42209962ac9be", size = 26203707, upload-time = "2026-06-03T16:07:09.705Z" },
+dependencies = [
+    { name = "diskcache" },
+    { name = "jinja2" },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.11.*'" },
+    { name = "numpy", version = "2.5.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "typing-extensions" },
 ]
+sdist = { url = "https://files.pythonhosted.org/packages/c1/2f/46487e949da42b31847853793ddbfd44c7414e94d4364c9a41f91f30af27/llama_cpp_python-0.3.34.tar.gz", hash = "sha256:d849d286d808284f1d3ec1bd6875572430d29d1f9574a010232caa4e9cef0e35", size = 71617302, upload-time = "2026-07-12T04:33:41.928Z" }
 
 [[package]]
 name = "loguru"
@@ -3117,7 +3129,7 @@ wheels = [
 
 [[package]]
 name = "viorra"
-version = "1.0.0"
+version = "1.3"
 source = { editable = "." }
 dependencies = [
     { name = "datasets" },
@@ -3127,7 +3139,7 @@ dependencies = [
     { name = "kaggle", version = "1.7.4.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "kaggle", version = "2.2.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "langdetect" },
-    { name = "litert-lm-api" },
+    { name = "llama-cpp-python" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.11.*'" },
     { name = "numpy", version = "2.5.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
@@ -3151,7 +3163,7 @@ requires-dist = [
     { name = "json-repair", specifier = ">=0.30.0" },
     { name = "kaggle", specifier = ">=1.7.4.5" },
     { name = "langdetect" },
-    { name = "litert-lm-api" },
+    { name = "llama-cpp-python" },
     { name = "numpy" },
     { name = "openai", specifier = ">=2.44.0" },
     { name = "psutil" },

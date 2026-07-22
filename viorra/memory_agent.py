@@ -4,12 +4,7 @@ from smolagents import CodeAgent, Model, ChatMessage, tool
 from smolagents.models import MessageRole
 import viorra.engine as e
 
-# We define a dedicated file for the user's permanent memory
-MEMORY_FILE = os.path.join(
-    os.getenv("LOCALAPPDATA", os.path.expanduser("~")), 
-    "Viorra", 
-    "user_knowledge_graph.json"
-)
+import viorra.db as db
 
 # --- 1. MACRO-TOOL: KNOWLEDGE GRAPH MANAGER ---
 @tool
@@ -22,27 +17,16 @@ def manage_user_memory(action: str, knowledge: str = "") -> str:
         action: Must be either 'save' or 'read'.
         knowledge: The fact to save (e.g., 'User struggles with writing conclusions' or 'User plays squash'). Leave empty if reading.
     """
-    os.makedirs(os.path.dirname(MEMORY_FILE), exist_ok=True)
-    
-    # Load current memory
-    if os.path.exists(MEMORY_FILE):
-        with open(MEMORY_FILE, "r", encoding="utf-8") as f:
-            try:
-                memory_db = json.load(f)
-            except:
-                memory_db = []
-    else:
-        memory_db = []
-
     if action == "save":
-        if knowledge and knowledge not in memory_db:
-            memory_db.append(knowledge)
-            with open(MEMORY_FILE, "w", encoding="utf-8") as f:
-                json.dump(memory_db, f, indent=4)
-            return f"Successfully saved knowledge: '{knowledge}'"
-        return "Knowledge already exists or was empty."
+        if knowledge:
+            success = db.save_memory_fact(knowledge)
+            if success:
+                return f"Successfully saved knowledge: '{knowledge}'"
+            return "Knowledge already exists."
+        return "Knowledge was empty."
         
     elif action == "read":
+        memory_db = db.read_all_memory()
         if not memory_db:
             return "The user's memory database is currently empty."
         return "Current Knowledge Graph:\n" + "\n".join([f"- {m}" for m in memory_db])
@@ -52,12 +36,8 @@ def manage_user_memory(action: str, knowledge: str = "") -> str:
 def load_memory():
     """Helper function to cleanly load memory for the main prompt injection."""
     try:
-        # We manually read it here to bypass the LLM reasoning step for speed during chat injection
-        if os.path.exists(MEMORY_FILE):
-            with open(MEMORY_FILE, "r", encoding="utf-8") as f:
-                db = json.load(f)
-                return db if db else []
-        return []
+        # We fetch directly from SQLite to bypass the LLM reasoning step for speed during chat injection
+        return db.read_all_memory()
     except Exception:
         return []
 
@@ -81,7 +61,7 @@ class InProcessLlamaModel(Model):
         )
         
         # Format conversation using standard Gemma 4 format
-        raw_prompt = ""
+        raw_prompt = "<bos>"
         for m in clean_msgs:
             role = m["role"]
             content = m.get("content", "")
@@ -103,11 +83,11 @@ class InProcessLlamaModel(Model):
                 role = "system"
             elif role == "assistant":
                 role = "model"
-            raw_prompt += f"<|turn|>{role}\n{content_str.strip()}\n"
-        raw_prompt += "<|turn|>model\n"
+            raw_prompt += f"<|turn>{role}\n{content_str.strip()}<turn|>\n"
+        raw_prompt += "<|turn>model\n"
         
         # Stop sequences
-        stops = ["<turn|>", "<|turn|>"]
+        stops = ["<turn|>", "<|turn>"]
         if stop_sequences:
             stops.extend(stop_sequences)
             
@@ -123,11 +103,9 @@ class InProcessLlamaModel(Model):
         )
         output_text = response["choices"][0]["text"].strip()
         
-        # Strip thinking tag residues to ensure clean Python code outputs
-        if "</think>" in output_text:
-            output_text = output_text.split("</think>")[-1].strip()
-        if "<channel|>" in output_text:
-            output_text = output_text.split("<channel|>")[-1].strip()
+        # Ensure code blocks are properly wrapped for smolagents parser
+        if "<code>" not in output_text and ("manage_user_memory" in output_text or "final_answer" in output_text):
+            output_text = f"<code>\n{output_text}\n</code>"
             
         return ChatMessage(role=MessageRole.ASSISTANT, content=output_text)
 
@@ -156,7 +134,12 @@ def run_memory_agent_async(user_message: str, viorra_response: str):
     User just said: "{user_message}"
     Viorra replied: "{viorra_response}"
     
-    If the user revealed a personal fact, a specific goal, or a recurring writing weakness, use the `manage_user_memory` tool with action='save' to store it.
+    Analyze the text and extract any of the following structured categories:
+    - Target Schools (e.g., "Target: Harvard", "Target: Stanford")
+    - Writing Weaknesses (e.g., "Weakness: Passive voice", "Weakness: Clichés")
+    - Core Spikes/Themes (e.g., "Spike: Astronomy", "Spike: Squash")
+    
+    If the user revealed anything fitting these categories, use the `manage_user_memory` tool with action='save' to store EACH fact as a separate categorized string (e.g., "Target: Harvard").
     If there is nothing profoundly important to remember, do not save anything.
     Write the code to execute this logic.
     """

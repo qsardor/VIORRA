@@ -1141,3 +1141,46 @@ header {
     opacity: 1;
     pointer-events: auto;
 }
+
+/* --- FRESH VIORRA SPATIAL UI POLISH --- */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100vw;
+    height: 80vh;
+    background: radial-gradient(circle at 50% 15%, rgba(226, 180, 113, 0.04) 0%, rgba(11, 19, 16, 0) 70%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+.diagnostic-card {
+    background: rgba(22, 43, 35, 0.35);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.25rem;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.diagnostic-card:hover {
+    border-color: rgba(226, 180, 113, 0.4);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), 0 0 20px rgba(226, 180, 113, 0.08);
+    transform: translateY(-2px);
+}
+
+.diagnostic-card.readiness-card {
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.primary-btn:hover {
+    box-shadow: 0 0 15px rgba(226, 180, 113, 0.2);
+}

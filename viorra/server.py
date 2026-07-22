@@ -28,6 +28,12 @@ from pydantic import BaseModel
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # --- STARTUP ---
+    try:
+        from viorra.telemetry import record_install_event
+        record_install_event()
+    except Exception:
+        pass
+    
     import threading
     from viorra.engine import ensure_models_loaded
     
@@ -125,6 +131,7 @@ if not os.path.exists(static_dir):
 class AnalyzeRequest(BaseModel):
     text: str
     debug_mode: bool = False
+    incognito: bool = False
 
 @app.post("/api/upload")
 async def api_upload(file: UploadFile = File(...)):
@@ -156,6 +163,15 @@ async def analyze_endpoint(request: AnalyzeRequest):
     result = await asyncio.to_thread(analyze_essay, request.text, request.debug_mode)
         
     result["session_id"] = session_id
+
+    # Record operational telemetry event
+    if "error" not in result:
+        try:
+            from viorra.telemetry import record_analysis_event
+            record_analysis_event(session_id, request.text, result, request.incognito)
+        except Exception:
+            pass
+
     return result
 
 
@@ -170,6 +186,7 @@ class ChatRequest(BaseModel):
     chat_history: List[ChatMessage]
     new_message: str
     retrieved_docs: List[Dict[str, Any]] = []
+    incognito: bool = False
 
 @app.post("/api/chat")
 async def chat_endpoint(request: ChatRequest, background_tasks: BackgroundTasks):
@@ -199,15 +216,17 @@ async def chat_endpoint(request: ChatRequest, background_tasks: BackgroundTasks)
     chat_log += f"User: {request.new_message}\n"
     chat_log += f"Viorra: {result['response']}\n"
     
-    # Spawn the silent background extraction thread during idle time
-    try:
-        from viorra.memory_agent import run_memory_agent_async
-        background_tasks.add_task(run_memory_agent_async, request.new_message, result['response'])
-    except Exception as e:
-        import logging
-        logging.error(f"[MEMORY AGENT ERROR] {e}")
+    # Spawn the silent background extraction thread during idle time (unless incognito)
+    if not request.incognito:
+        try:
+            from viorra.memory_agent import run_memory_agent_async
+            background_tasks.add_task(run_memory_agent_async, request.new_message, result['response'])
+        except Exception as e:
+            import logging
+            logging.error(f"[MEMORY AGENT ERROR] {e}")
         
     # The frontend will call /api/sessions/save to sync the state instead of appending to chat logs
+    # Frontend handles skipping /api/sessions/save if incognito=true
     return result
 
 
@@ -217,49 +236,76 @@ class SaveSessionRequest(BaseModel):
     essay_text: str
     data: Dict[str, Any]
     chat_history: List[Dict[str, Any]]
+    incognito: bool = False
 
 @app.post("/api/sessions/save")
 async def api_save_session(req: SaveSessionRequest):
-    session_path = os.path.join(USER_DATA_DIR, "Sessions", f"{req.session_id}.json")
+    if req.incognito:
+        return {"status": "ok", "skipped": True}
+        
+    import viorra.db as db
     try:
-        with open(session_path, "w", encoding="utf-8") as f:
-            json.dump(req.dict(), f, indent=2)
+        db.save_session(req.session_id, req.essay_text, req.data, req.chat_history)
         return {"status": "ok"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/sessions")
 async def api_list_sessions():
-    sessions_dir = os.path.join(USER_DATA_DIR, "Sessions")
-    if not os.path.exists(sessions_dir):
+    import viorra.db as db
+    try:
+        sessions = db.get_all_sessions()
+        # Return list of filenames to match frontend expectations (id.json)
+        return [f"{s['session_id']}.json" for s in sessions]
+    except Exception:
         return []
-        
-    files = [f for f in os.listdir(sessions_dir) if f.endswith(".json")]
-    # Sort by modification time (newest first)
-    files.sort(key=lambda x: os.path.getmtime(os.path.join(sessions_dir, x)), reverse=True)
-    return files
 
 @app.get("/api/sessions/{filename}")
 async def api_get_session(filename: str):
-    if not filename.endswith(".json"):
-        filename += ".json"
-    session_path = os.path.join(USER_DATA_DIR, "Sessions", filename)
-    if not os.path.exists(session_path):
+    import viorra.db as db
+    session_id = filename.removesuffix(".json") if filename.endswith(".json") else filename
+    session = db.get_session(session_id)
+    
+    if not session:
+        # Fallback: check if legacy session JSON file exists on disk
+        legacy_filename = filename if filename.endswith(".json") else f"{filename}.json"
+        legacy_path = os.path.join(USER_DATA_DIR, "Sessions", legacy_filename)
+        if os.path.exists(legacy_path):
+            try:
+                import json
+                with open(legacy_path, "r", encoding="utf-8") as f:
+                    disk_data = json.load(f)
+                sid = disk_data.get("session_id", session_id)
+                text = disk_data.get("essay_text") or disk_data.get("text") or ""
+                data = disk_data.get("data") or {}
+                hist = disk_data.get("chat_history") or []
+                db.save_session(sid, text, data, hist)
+                session = db.get_session(sid)
+            except Exception:
+                pass
+                
+    if not session:
         raise HTTPException(status_code=404, detail="Session not found")
-        
-    try:
-        with open(session_path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    
+    return session
 
 @app.delete("/api/sessions/{filename}")
 async def api_delete_session(filename: str):
-    if not filename.endswith(".json"):
-        filename += ".json"
-    session_path = os.path.join(USER_DATA_DIR, "Sessions", filename)
-    if os.path.exists(session_path):
-        os.remove(session_path)
+    import viorra.db as db
+    session_id = filename.removesuffix(".json") if filename.endswith(".json") else filename
+    deleted = db.delete_session(session_id)
+    
+    # Also clean up legacy disk JSON file if present
+    legacy_filename = filename if filename.endswith(".json") else f"{filename}.json"
+    legacy_path = os.path.join(USER_DATA_DIR, "Sessions", legacy_filename)
+    if os.path.exists(legacy_path):
+        try:
+            os.remove(legacy_path)
+            deleted = True
+        except Exception:
+            pass
+
+    if deleted:
         return {"success": True}
     return {"success": False, "error": "Not found"}
 
@@ -278,28 +324,23 @@ def api_status():
 
 @app.delete("/api/factory_reset")
 async def factory_reset():
-    import shutil
     import asyncio
+    import viorra.db as db
     
-    # Wipe user sessions
-    sessions_dir = os.path.join(USER_DATA_DIR, "Sessions")
-    if os.path.exists(sessions_dir):
+    # Wipe database tables cleanly
+    try:
+        db.wipe_database()
+    except Exception as e:
+        import logging
+        logging.error(f"[DB WIPE ERROR] {e}")
+        
+    # Wipe config
+    config_path = os.path.join(USER_DATA_DIR, "config.json")
+    if os.path.exists(config_path):
         try:
-            shutil.rmtree(sessions_dir)
-            os.makedirs(sessions_dir, exist_ok=True)
+            os.remove(config_path)
         except Exception:
             pass
-            
-    # Wipe config and knowledge graph memory
-    config_path = os.path.join(USER_DATA_DIR, "config.json")
-    memory_path = os.path.join(USER_DATA_DIR, "user_knowledge_graph.json")
-    
-    for file_path in [config_path, memory_path]:
-        if os.path.exists(file_path):
-            try:
-                os.remove(file_path)
-            except Exception:
-                pass
             
     # [PROTECTION]: We explicitly do NOT wipe USER_DATA_DIR or the HuggingFace cache 
     # to protect the 2.62GB GGUF model and the TurboVec embeddings from being destroyed.

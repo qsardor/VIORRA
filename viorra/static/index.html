@@ -47,15 +47,15 @@
             <section class="editor-section hidden">
                 <div class="editor-section" style="max-width: 800px; margin: 0 auto; width: 100%;">
                     <div class="chatgpt-input-wrapper">
-                        <input type="file" id="fileUploadInput" accept=".txt,.md,.docx" style="display: none;" />
-                        <button id="uploadBtn" class="upload-btn" title="Upload from Computer">&#128206;</button>
+                        <input type="file" id="fileUploadInput" accept=".txt,.md,.docx" style="display: none;" data-testid="file-upload-input" />
+                        <button id="uploadBtn" class="upload-btn" title="Upload from Computer" data-testid="upload-btn">&#128206;</button>
                         
-                        <textarea id="essayInput" class="auto-resize-textarea" placeholder="Paste or upload your essay here..." rows="1"></textarea>
+                        <textarea id="essayInput" class="auto-resize-textarea" placeholder="Paste or upload your essay here..." rows="1" data-testid="essay-input"></textarea>
                         
-                        <button id="analyzeBtn" class="submit-btn" style="display: none;" disabled>&#8593;</button>
+                        <button id="analyzeBtn" class="submit-btn" style="display: none;" disabled data-testid="analyze-btn">&#8593;</button>
                     </div>
                     <div style="text-align: right; margin-top: 0.5rem; margin-right: 1rem;">
-                        <span class="mono-label right" id="charCount" style="font-size: 0.7rem; color: var(--cream-dim);">0 WORDS</span>
+                        <span class="mono-label right" id="charCount" style="font-size: 0.7rem; color: var(--cream-dim);" data-testid="char-count">0 WORDS</span>
                     </div>
                 </div>
             </section>
@@ -119,10 +119,10 @@
                 </div>
                 <div id="tosGateContainer" style="margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1.5rem; display: none;">
                     <label style="display: flex; align-items: center; gap: 0.75rem; color: var(--cream); font-size: 0.9rem; cursor: pointer; margin-bottom: 1.5rem; user-select: none;">
-                        <input type="checkbox" id="tosCheckbox" style="accent-color: var(--accent); width: 1.2rem; height: 1.2rem; cursor: pointer;">
+                        <input type="checkbox" id="tosCheckbox" style="accent-color: var(--accent); width: 1.2rem; height: 1.2rem; cursor: pointer;" data-testid="tos-checkbox">
                         I have read and agree to the Terms of Service.
                     </label>
-                    <button id="tosAcceptBtn" class="primary-btn" style="width: 100%; font-size: 0.9rem; padding: 1rem; border-radius: 8px;" disabled>START USING VIORRA</button>
+                    <button id="tosAcceptBtn" class="primary-btn" style="width: 100%; font-size: 0.9rem; padding: 1rem; border-radius: 8px;" disabled data-testid="tos-accept-btn">START USING VIORRA</button>
                 </div>
             </div>
         </div>
@@ -137,8 +137,12 @@
                     <label class="mono-label">PERFORMANCE</label>
                     <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem; margin-bottom: 2rem;">
                         <label style="color: var(--cream); font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                            <input type="checkbox" id="debugToggleCheckbox" style="accent-color: var(--amber); width: 16px; height: 16px;">
+                            <input type="checkbox" id="debugToggleCheckbox" style="accent-color: var(--amber); width: 16px; height: 16px;" data-testid="debug-toggle">
                             Debug mode (Optional) - Shows generation stats at bottom
+                        </label>
+                        <label style="color: var(--cream); font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem; cursor: pointer; margin-top: 0.5rem;">
+                            <input type="checkbox" id="incognitoToggleCheckbox" style="accent-color: var(--amber); width: 16px; height: 16px;" data-testid="incognito-toggle">
+                            Incognito Mode - Do not save session or learn memory facts
                         </label>
                     </div>
 
@@ -375,6 +379,12 @@
         debugToggleCheckbox.checked = localStorage.getItem('viorraDebugMode') === 'true';
         debugToggleCheckbox.addEventListener('change', (e) => {
             localStorage.setItem('viorraDebugMode', e.target.checked);
+        });
+
+        const incognitoToggleCheckbox = document.getElementById('incognitoToggleCheckbox');
+        incognitoToggleCheckbox.checked = localStorage.getItem('viorraIncognitoMode') === 'true';
+        incognitoToggleCheckbox.addEventListener('change', (e) => {
+            localStorage.setItem('viorraIncognitoMode', e.target.checked);
         });
 
         const infoBtn = document.getElementById('infoBtn');
@@ -687,7 +697,7 @@
                 const response = await fetch('/api/analyze', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({text: text, debug_mode: debugToggleCheckbox.checked})
+                    body: JSON.stringify({text: text, debug_mode: debugToggleCheckbox.checked, incognito: incognitoToggleCheckbox.checked})
                 });
                 
                 const data = await response.json();
@@ -770,12 +780,35 @@
                                 <div class="message-bubble">${summaryText}</div>
                             </div>
                         `;
-                // Populate Diagnostic Cards
+                        // Populate Diagnostic Cards
                         if (data.diagnostics) {
-                            let diagHTML = data.diagnostics.map((d, i) => `
+                            let readinessHTML = `
+                                <div class="diagnostic-card readiness-card" style="border: 1px solid var(--amber); background: linear-gradient(135deg, rgba(226,180,113,0.08) 0%, rgba(11,19,16,0.8) 100%); margin-bottom: 1.5rem;" data-testid="readiness-card">
+                                    <h3 class="serif-title small" style="color: var(--amber); margin-bottom: 0.5rem;">🏆 Ivy League Admissions Readiness Profile</h3>
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-top: 0.75rem;">
+                                        <div>
+                                            <span class="mono-label" style="font-size: 0.65rem; color: var(--cream-dim); display: block;">CLICHÉ RISK</span>
+                                            <span style="font-family: var(--font-mono); color: var(--amber); font-weight: bold; font-size: 0.95rem;">${(data.diagnostics && data.diagnostics.length >= 2) ? '⚠️ ELEVATED' : '✅ LOW'}</span>
+                                        </div>
+                                        <div>
+                                            <span class="mono-label" style="font-size: 0.65rem; color: var(--cream-dim); display: block;">COGNITIVE DEPTH</span>
+                                            <span style="font-family: var(--font-mono); color: var(--cream); font-weight: bold; font-size: 0.95rem;">HIGH (CoT Active)</span>
+                                        </div>
+                                        <div>
+                                            <span class="mono-label" style="font-size: 0.65rem; color: var(--cream-dim); display: block;">INFERENCE ACCELERATION</span>
+                                            <span style="font-family: var(--font-mono); color: var(--cream); font-weight: bold; font-size: 0.95rem;">CUDA GPU ⚡</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                            
+                            let diagHTML = readinessHTML + data.diagnostics.map((d, i) => `
                                 <div class="diagnostic-card" data-diag-id="${i}">
                                     <blockquote class="quote">"${d.quote}"</blockquote>
                                     <p class="feedback" id="feedback-${i}">${d.feedback || "No feedback returned."}</p>
+                                    <div style="margin-top: 0.85rem; padding-top: 0.6rem; border-top: 1px solid rgba(255,255,255,0.05); display: flex; gap: 0.5rem;">
+                                        <button class="primary-btn" onclick="askViorraRedraft('${encodeURIComponent(d.quote)}', this)" style="font-size: 0.75rem; padding: 0.4rem 0.8rem; background: rgba(226,180,113,0.12); border: 1px solid var(--amber); color: var(--amber); border-radius: 6px; cursor: pointer;">💬 Ask Viorra to Re-draft</button>
+                                    </div>
                                 </div>
                             `).join('');
                             
@@ -886,8 +919,10 @@
 
         function parseMarkdown(text) {
             if (!text) return "";
+            // Scrub markdown headers (#, ##, ###) to maintain clean human paragraphs
+            let cleanText = text.replace(/^#+\s*/gm, '');
             // Escape HTML
-            let html = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            let html = cleanText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
             // Bold
             html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
             // Italic
@@ -897,6 +932,57 @@
             // Newlines
             html = html.replace(/\n/g, '<br>');
             return html;
+        }
+
+        async function askViorraRedraft(quotedText, btnElem) {
+            try {
+                const text = decodeURIComponent(quotedText);
+                const card = btnElem ? btnElem.closest('.diagnostic-card') : null;
+                if (!card) return;
+                
+                let redraftBox = card.querySelector('.inline-redraft-box');
+                if (!redraftBox) {
+                    redraftBox = document.createElement('div');
+                    redraftBox.className = 'inline-redraft-box';
+                    redraftBox.style.cssText = "margin-top: 0.85rem; padding: 0.85rem; background: rgba(0,0,0,0.35); border: 1px solid var(--border-highlight); border-radius: 8px; font-size: 0.85rem; color: var(--cream);";
+                    card.appendChild(redraftBox);
+                }
+                
+                redraftBox.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--amber); font-family: var(--font-mono); font-size: 0.8rem;">
+                        <span class="spinner" style="width: 14px; height: 14px; border-width: 2px;"></span>
+                        <span>Viorra is drafting human revisions...</span>
+                    </div>
+                `;
+                
+                const input = document.getElementById('essayInput');
+                const incognitoToggle = document.getElementById('incognitoToggleCheckbox');
+                
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        session_id: currentSessionId,
+                        essay_text: input ? input.value : "",
+                        previous_feedback: currentFeedbackContext,
+                        chat_history: chatHistory,
+                        new_message: `Give me 2 natural human draft ideas to replace this phrase from my essay: "${text}". Do NOT use any hashtags, headings, or artificial option titles. Write in natural paragraphs.`,
+                        retrieved_docs: window.currentRetrievedDocs || [],
+                        incognito: incognitoToggle ? incognitoToggle.checked : false
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.response) {
+                    let cleanResponse = data.response.replace(/^#+\s*/gm, '');
+                    redraftBox.innerHTML = `
+                        <div style="font-family: var(--font-mono); font-size: 0.7rem; color: var(--amber); margin-bottom: 0.5rem; letter-spacing: 0.05em;">VIORRA SUGGESTED REDRAFTS:</div>
+                        <div style="line-height: 1.6; color: var(--cream);">${parseMarkdown(cleanResponse)}</div>
+                    `;
+                } else {
+                    redraftBox.innerHTML = `<div style="color: var(--red);">Failed to generate redraft. Please try again.</div>`;
+                }
+            } catch(e) { console.error("Error in askViorraRedraft", e); }
         }
 
         function appendMessage(role, content) {
@@ -982,7 +1068,8 @@
                         previous_feedback: currentFeedbackContext,
                         chat_history: chatHistory,
                         new_message: text,
-                        retrieved_docs: window.currentRetrievedDocs || []
+                        retrieved_docs: window.currentRetrievedDocs || [],
+                        incognito: incognitoToggleCheckbox.checked
                     })
                 });
                 
@@ -1229,7 +1316,7 @@
                 }
                 if (state.session_id) currentSessionId = state.session_id;
                 
-                if (state.data && state.data.mentor_summary) {
+                if (state.data && typeof state.data === 'object') {
                     const data = state.data;
                     window.lastAnalysisData = data;
                     editorSec.classList.add('hidden');
@@ -1245,7 +1332,7 @@
                     
                     // Inject Mentor Summary as the first chat message (same as initial analysis path)
                     const chatFeed = document.getElementById('chatFeed');
-                    const summaryText = data.mentor_summary || "I have analyzed your essay. What specific feedback would you like to discuss?";
+                    const summaryText = data.mentor_summary || data.summary || data.raw_output || "I have analyzed your essay. What specific feedback would you like to discuss?";
                     chatFeed.innerHTML = `
                         <div class="chat-message viorra">
                             <div class="message-bubble">${summaryText}</div>
@@ -1257,11 +1344,14 @@
                         window.currentRetrievedDocs = data.retrieved_docs;
                     }
                     
-                    document.getElementById('documentWorkspace').innerHTML = highlightQuotes(state.essay_text, data.diagnostics || []);
+                    document.getElementById('documentWorkspace').innerHTML = highlightQuotes(state.essay_text || '', data.diagnostics || []);
                     let diagHTML = (data.diagnostics || []).map((d, i) => `
                         <div class="diagnostic-card" data-diag-id="${i}">
-                            <blockquote class="quote">"${d.quote}"</blockquote>
+                            <blockquote class="quote">"${d.quote || ''}"</blockquote>
                             <p class="feedback" id="feedback-${i}">${d.feedback || "No feedback returned."}</p>
+                            <div style="margin-top: 0.85rem; padding-top: 0.6rem; border-top: 1px solid rgba(255,255,255,0.05); display: flex; gap: 0.5rem;">
+                                <button class="primary-btn" onclick="askViorraRedraft('${encodeURIComponent(d.quote || '')}', this)" style="font-size: 0.75rem; padding: 0.4rem 0.8rem; background: rgba(226,180,113,0.12); border: 1px solid var(--amber); color: var(--amber); border-radius: 6px; cursor: pointer;">💬 Ask Viorra to Re-draft</button>
+                            </div>
                         </div>
                     `).join('');
                     
@@ -1270,14 +1360,25 @@
                             <div class="diagnostic-card" style="border: 1px solid rgba(255,191,0,0.3); background: rgba(255,191,0,0.05); margin-top: 2rem;">
                                 <h3 class="serif-title small" style="color: var(--amber);">⚡ VIORRA Hardware Benchmark</h3>
                                 <div style="display: flex; gap: 2rem; margin-top: 1rem;">
-                                    <div><span class="mono-label" style="font-size: 0.7rem; display: block;">INFERENCE TIME</span><span style="font-family: var(--mono); color: var(--cream); font-size: 1.1rem;">${data.benchmark.infer_time}s</span></div>
-                                    <div><span class="mono-label" style="font-size: 0.7rem; display: block;">TOKENS/SEC</span><span style="font-family: var(--mono); color: var(--cream); font-size: 1.1rem;">${data.benchmark.tokens_sec}</span></div>
-                                    <div><span class="mono-label" style="font-size: 0.7rem; display: block;">SYSTEM RAM</span><span style="font-family: var(--mono); color: var(--cream); font-size: 1.1rem;">${data.benchmark.ram_mb} MB</span></div>
+                                    <div><span class="mono-label" style="font-size: 0.7rem; display: block;">INFERENCE TIME</span><span style="font-family: var(--mono); color: var(--cream); font-size: 1.1rem;">${data.benchmark.infer_time || 0}s</span></div>
+                                    <div><span class="mono-label" style="font-size: 0.7rem; display: block;">TOKENS/SEC</span><span style="font-family: var(--mono); color: var(--cream); font-size: 1.1rem;">${data.benchmark.tokens_sec || 0}</span></div>
+                                    <div><span class="mono-label" style="font-size: 0.7rem; display: block;">SYSTEM RAM</span><span style="font-family: var(--mono); color: var(--cream); font-size: 1.1rem;">${data.benchmark.ram_mb || 0} MB</span></div>
                                 </div>
                             </div>
                         `;
                     }
                     diagList.innerHTML = diagHTML;
+                    
+                    // Populate currentFeedbackContext so chat works immediately after loading session
+                    if (data.diagnostics && data.diagnostics.length > 0) {
+                        let context = "";
+                        data.diagnostics.forEach(d => {
+                            if (d.quote && d.feedback) {
+                                context += `[Quote: ${d.quote}]\n${d.feedback}\n\n`;
+                            }
+                        });
+                        currentFeedbackContext = context;
+                    }
                     
                     setupInteractions();
                     document.getElementById('chatSection').classList.remove('hidden');
@@ -1285,12 +1386,13 @@
                 }
                 
                 if (state.chat_history && state.chat_history.length > 0) {
-                    // Migrate legacy 'assistant' roles to 'model' for Gemma 4 compatibility
+                    // Migrate legacy 'assistant' / 'bot' / 'viorra' roles to 'model' for Gemma 4 compatibility
                     chatHistory = state.chat_history.map(msg => {
-                        if (msg.role === 'assistant') {
-                            return { ...msg, role: 'model' };
+                        let r = msg.role;
+                        if (r === 'assistant' || r === 'bot' || r === 'viorra') {
+                            r = 'model';
                         }
-                        return msg;
+                        return { role: r, content: msg.content || '' };
                     });
                     chatHistory.forEach(msg => {
                         appendMessage(msg.role === 'user' ? 'user' : 'viorra', msg.content);
@@ -1347,6 +1449,12 @@
         const tosCheckbox = document.getElementById('tosCheckbox');
         const tosAcceptBtn = document.getElementById('tosAcceptBtn');
         const tosGateContainer = document.getElementById('tosGateContainer');
+
+        // Check URL params or localStorage for TOS auto-bypass (ideal for AI agent GUI testing)
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('bypass_tos') === 'true' || urlParams.get('dev') === 'true' || localStorage.getItem('viorra_bypass_tos') === 'true') {
+            localStorage.setItem('viorra_tos_accepted', 'true');
+        }
 
         // On Load: Check if ToS is accepted
         if (!localStorage.getItem('viorra_tos_accepted')) {

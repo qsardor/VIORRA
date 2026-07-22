@@ -53,4 +53,5 @@ env/
 .agents/
 scratch/
 recovery_bin/
+.project_recovery_bin/
 *.temp_bak

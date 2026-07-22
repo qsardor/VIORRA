@@ -376,10 +376,20 @@ def _analyze_essay_impl(test_text: str, debug_mode: bool = False):
         rag=rag_examples_text,
         feedback="None"
     )
-    
+    try:
+        from viorra.memory_agent import load_memory
+        current_memory = load_memory()
+        if current_memory:
+            memory_injection = "\n## PERMANENT USER MEMORY (KNOWLEDGE ABOUT THE USER):\n"
+            for m in current_memory:
+                memory_injection += f"- {m}\n"
+            sys_prompt = memory_injection + "\n\n" + sys_prompt
+    except Exception as e:
+        pass
+
     # --- 3. NATIVE LLAMA.CPP INFERENCE ---
     # Manually construct Gemma 4 formatting to avoid template fragility
-    raw_prompt = f"<bos><|turn>system\n<|think|>\n{sys_prompt}<turn|>\n<|turn>user\nAnalyze my essay and provide your feedback.<turn|>\n<|turn>model\n"
+    raw_prompt = f"<|turn>system\n<|think|>\n{sys_prompt}<turn|>\n<|turn>user\nAnalyze my essay and provide your feedback.<turn|>\n<|turn>model\n"
     
     infer_start = time.time()
     response = llm_engine.create_completion(
@@ -479,7 +489,7 @@ def _chat_with_viorra_impl(essay_text: str, previous_feedback: str, chat_history
     # [CONTEXT WINDOW PATCH]: Truncate chat history to the last 10 messages to prevent 128K VRAM OOM crashes on the GPU
     safe_chat_history = chat_history[-10:] if len(chat_history) > 10 else chat_history
     
-    raw_prompt = f"<bos><|turn>system\n<|think|>\n{chat_sys_prompt}<turn|>\n"
+    raw_prompt = f"<|turn>system\n<|think|>\n{chat_sys_prompt}<turn|>\n"
     for msg in safe_chat_history:
         # DeepMind Guideline: Strip out internal <|channel>thought tokens to save context window space
         # and prevent constraint degradation over long conversations.
@@ -514,6 +524,8 @@ def _chat_with_viorra_impl(essay_text: str, previous_feedback: str, chat_history
         output_text = _re.sub(r'<\|think\|?>.*?(<\|/think\|?>|$)', '', output_text, flags=_re.DOTALL)
         output_text = _re.sub(r'<\|startoftext\|>', '', output_text)
         output_text = _re.sub(r'<\|turn\|>.*', '', output_text, flags=_re.DOTALL)
+        # Scrub markdown headers (#, ##, ###) to enforce natural human paragraph formatting
+        output_text = _re.sub(r'^#+\s*', '', output_text, flags=_re.MULTILINE)
         output_text = output_text.strip()
         
         # [COMMUNITY RESEARCH APPLIED]: The Anti-Slop filter natively scrubs generic AI buzzwords
@@ -525,7 +537,16 @@ def _chat_with_viorra_impl(essay_text: str, previous_feedback: str, chat_history
             r"\btestament to\b": "proof of",
             r"\bmultifaceted\b": "complex",
             r"\bnuanced\b": "detailed",
-            r"\bleverage\b": "use"
+            r"\bleverage\b": "use",
+            r"\bactually\b": "in truth",
+            r"\bcrucial\b": "essential",
+            r"\badditionally\b": "also",
+            r"\bintricate\b": "detailed",
+            r"\bunderscore\b": "highlight",
+            r"\bvibrant\b": "lively",
+            r"\bbreathtaking\b": "striking",
+            r"\bshowcasing\b": "showing",
+            r"\bpivotal\b": "key"
         }
         for slop, replacement in slop_map.items():
             output_text = re.sub(slop, replacement, output_text, flags=re.IGNORECASE)

@@ -98,35 +98,71 @@ def profile_system_hardware():
 
 def download_file_native(url, dest_path, expected_size=None, expected_sha256=None, status_callback=None):
     """
-    Downloads a file using the OS-native 'curl' command to guarantee resume capabilities
-    and bypass HuggingFace's heavy Python networking bottlenecks and API key requirements.
+    Downloads a file using requests with stream=True to provide dead-simple progress tracking
+    and strict KeyboardInterrupt (Ctrl+C) handling.
     """
     import os
-    import subprocess
+    import sys
+    import requests
     import hashlib
     
     os.makedirs(os.path.dirname(dest_path), exist_ok=True)
     
-    # If we know the size, skip if already complete
     if expected_size and os.path.exists(dest_path) and os.path.getsize(dest_path) == expected_size:
         return True
         
     if status_callback:
-        status_callback(f"Downloading {os.path.basename(dest_path)} via native OS curl...")
+        status_callback(f"Downloading {os.path.basename(dest_path)}...")
         
-    cmd = [
-        "curl", 
-        "-L",           # Follow redirects natively
-        "-C", "-",      # Automatically resume interrupted downloads
-        "--retry", "5", # Native connection retries
-        "-o", dest_path,
-        url
-    ]
-    
-    # We use CREATE_NO_WINDOW on Windows to prevent terminal popups on the user's screen
-    creationflags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
-    subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=creationflags)
-    
+    try:
+        headers = {}
+        # Basic resume support
+        if os.path.exists(dest_path):
+            current_size = os.path.getsize(dest_path)
+            headers['Range'] = f'bytes={current_size}-'
+        else:
+            current_size = 0
+            
+        response = requests.get(url, headers=headers, stream=True, timeout=10)
+        
+        # If the server doesn't support range requests, it returns 200 instead of 206
+        if response.status_code == 200:
+            current_size = 0
+            mode = 'wb'
+        elif response.status_code == 206:
+            mode = 'ab'
+        elif response.status_code == 416: # Range not satisfiable (already fully downloaded)
+            return True
+        else:
+            response.raise_for_status()
+
+        total_size = int(response.headers.get('content-length', 0)) + current_size
+        
+        with open(dest_path, mode) as f:
+            for chunk in response.iter_content(chunk_size=1024*1024): # 1MB chunks
+                if chunk:
+                    f.write(chunk)
+                    current_size += len(chunk)
+                    if total_size > 0:
+                        pct = int((current_size / total_size) * 100)
+                        # Dead-simple progress format exactly as requested by rule
+                        sys.stdout.write(f"\rDownloading [{pct}%]")
+                        sys.stdout.flush()
+                        if status_callback:
+                            status_callback(f"Downloading [{pct}%]")
+                            
+        sys.stdout.write("\n")
+        sys.stdout.flush()
+                            
+    except KeyboardInterrupt:
+        print("\nDownload cancelled by user (Ctrl+C). Terminating cleanly.")
+        os._exit(0)
+    except Exception as e:
+        print(f"\nError downloading: {e}")
+        if os.path.exists(dest_path):
+            os.remove(dest_path)
+        raise
+
     # Verify Hash if provided to prevent silent corruption
     if expected_sha256 and os.path.exists(dest_path):
         if status_callback: status_callback("Verifying checksum...")
