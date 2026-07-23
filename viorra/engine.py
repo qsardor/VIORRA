@@ -261,14 +261,39 @@ import logging
 BANNED_WORDS = [
     "delve", "testament", "intricate", "tapestry", "underscore",
     "crucial", "additionally", "actually", "vibrant", "breathtaking",
-    "showcasing", "pivotal"
+    "showcasing", "pivotal", "multifaceted", "nuanced", "leverage"
 ]
 
-def audit_output(text: str) -> list:
+SLOP_MAP = {
+    r"\bdelve\b": "explore",
+    r"\btapestry\b": "structure",
+    r"\btestament to\b": "proof of",
+    r"\bmultifaceted\b": "complex",
+    r"\bnuanced\b": "detailed",
+    r"\bleverage\b": "use",
+    r"\bactually\b": "in truth",
+    r"\bcrucial\b": "essential",
+    r"\badditionally\b": "also",
+    r"\bintricate\b": "detailed",
+    r"\bunderscore\b": "highlight",
+    r"\bvibrant\b": "lively",
+    r"\bbreathtaking\b": "striking",
+    r"\bshowcasing\b": "showing",
+    r"\bpivotal\b": "key"
+}
+
+def scrub_slop(text: str) -> str:
+    """Replaces banned AI slop words with natural alternatives."""
+    for slop, replacement in SLOP_MAP.items():
+        text = re.sub(slop, replacement, text, flags=re.IGNORECASE)
+    return text
+
+def audit_output(text: str) -> str:
+    """Logs violations AND scrubs slop from text. Returns cleaned text."""
     violations = [w for w in BANNED_WORDS if w in text.lower()]
     if violations:
         logging.warning(f"[VIORRA] Banned word violations: {violations}")
-    return violations
+    return scrub_slop(text)
 
 ALLOWED_KEYS = {"quote", "feedback"}
 
@@ -406,7 +431,7 @@ def _analyze_essay_impl(test_text: str, debug_mode: bool = False):
     
     try:
         text_to_parse = extract_response(output_text)
-        audit_output(text_to_parse)
+        text_to_parse = audit_output(text_to_parse)
         check_hallucination(text_to_parse, test_text)
         
         # 2. Try to extract markdown block first
@@ -531,25 +556,7 @@ def _chat_with_viorra_impl(essay_text: str, previous_feedback: str, chat_history
         # [COMMUNITY RESEARCH APPLIED]: The Anti-Slop filter natively scrubs generic AI buzzwords
         # because 2B parameters will inevitably regress to training slop over long contexts.
         import re
-        slop_map = {
-            r"\bdelve\b": "explore",
-            r"\btapestry\b": "structure",
-            r"\btestament to\b": "proof of",
-            r"\bmultifaceted\b": "complex",
-            r"\bnuanced\b": "detailed",
-            r"\bleverage\b": "use",
-            r"\bactually\b": "in truth",
-            r"\bcrucial\b": "essential",
-            r"\badditionally\b": "also",
-            r"\bintricate\b": "detailed",
-            r"\bunderscore\b": "highlight",
-            r"\bvibrant\b": "lively",
-            r"\bbreathtaking\b": "striking",
-            r"\bshowcasing\b": "showing",
-            r"\bpivotal\b": "key"
-        }
-        for slop, replacement in slop_map.items():
-            output_text = re.sub(slop, replacement, output_text, flags=re.IGNORECASE)
+        output_text = scrub_slop(output_text)
             
         return {"response": output_text.strip()}
     except Exception as e:

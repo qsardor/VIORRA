@@ -133,24 +133,6 @@ class AnalyzeRequest(BaseModel):
     debug_mode: bool = False
     incognito: bool = False
 
-@app.post("/api/upload")
-async def api_upload(file: UploadFile = File(...)):
-    try:
-        content = await file.read()
-        filename = file.filename.lower()
-        if filename.endswith(".txt"):
-            text = content.decode("utf-8", errors="ignore")
-        elif filename.endswith(".docx"):
-            import docx
-            import io
-            doc = docx.Document(io.BytesIO(content))
-            text = "\n".join([p.text for p in doc.paragraphs])
-        else:
-            return {"error": "Unsupported file format. Please upload .txt or .docx"}
-        return {"text": text.strip()}
-    except Exception as e:
-        return {"error": str(e)}
-
 @app.post("/api/analyze")
 async def analyze_endpoint(request: AnalyzeRequest):
     global last_active_time

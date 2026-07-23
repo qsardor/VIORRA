@@ -22,4 +22,7 @@ Otherwise output raw JSON, no markdown fences, no text before or after:
 Only keys "quote" and "feedback" inside diagnostics. Escape internal quotes with backslash.
 No trailing commas.
 
+BANNED WORDS (never use in mentor_summary or feedback):
+delve, testament, intricate, tapestry, underscore, crucial, additionally, actually, vibrant, breathtaking, showcasing, pivotal, multifaceted, nuanced, leverage.
+
 [CRITICAL REMINDER]: YOU MUST ONLY OUTPUT VALID JSON MATCHING THE SCHEMA ABOVE. NO CONVERSATIONAL TEXT.
